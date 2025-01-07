@@ -324,7 +324,7 @@ function viewMemberDetails(id) {
         // Speichern der ID für spätere Updates
         document.getElementById("memberForm").dataset.memberId = id;
       });
-  }
+  }22
 
 document.getElementById("exportOpenPaymentsButton").addEventListener("click", () => {
     fetch("/export-open-payments")
