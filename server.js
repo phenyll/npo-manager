@@ -26,9 +26,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
         phone TEXT,
         childName TEXT,
         enrollmentYear INTEGER,
-        joinDate TEXT,
-        expectedExitDate TEXT,
-        actualExit TEXT
+        joinDate DATE,
+        expectedExitDate DATE,
+        autoExit DATE
       )
     `);
     db.run(`
@@ -36,7 +36,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         memberId INTEGER NOT NULL,
         year INTEGER NOT NULL,
-        paymentDate TEXT,
+        paymentDate DATE,
         amount REAL NOT NULL,
         status TEXT,
         paymentMethod TEXT DEFAULT 'Bank',
@@ -72,7 +72,7 @@ app.post("/members", (req, res) => {
       enrollmentYear,
       joinDate,
       expectedExitDate,
-      actualExit,
+      autoExit,
     } = req.body;
   
     db.run(
@@ -88,7 +88,7 @@ app.post("/members", (req, res) => {
         enrollmentYear,
         joinDate,
         expectedExitDate,
-        actualExit,
+        autoExit,
       ],
       function (err) {
         if (err) {
@@ -166,7 +166,7 @@ app.post("/import-members", upload.single("file"), (req, res) => {
               enrollmentYear,
               joinDate,
               expectedExitDate,
-              actualExit
+              autoExit
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `
@@ -185,9 +185,10 @@ app.post("/import-members", upload.single("file"), (req, res) => {
           const phone = row["Telefon"];
           const childName = row["Kind"];
           const enrollmentYear = row["Einschulung"];
-          const joinDate = row["Eintrittsdatum"] ? xlsx.SSF.format("yyyy-mm-dd", row["Eintrittsdatum"]) : null;
-          const expectedExitDate = row["Voraussichtlicher Austritt"] ? xlsx.SSF.format("yyyy-mm-dd", row["Voraussichtlicher Austritt"]) : null;
-          const actualExit = row["Austritt (ja)"] || "nein"; // Standardwert setzen
+          
+          const joinDate = row["Eintrittsdatum"] ? convertExcelDate(row["Eintrittsdatum"]) : null;
+          const expectedExitDate = row["Voraussichtlicher Austritt"] ? convertExcelDate(row["Voraussichtlicher Austritt"]) : null;
+          const autoExit = row["Austritt (ja)"] ? convertExcelDate(row["Austritt (ja)"]) : null;
 
           stmt.run(
             id,
@@ -200,7 +201,7 @@ app.post("/import-members", upload.single("file"), (req, res) => {
             enrollmentYear || null,
             joinDate,
             expectedExitDate,
-            actualExit || null,
+            autoExit,
             (err) => {
               if (err) {
                 console.error("Fehler beim Importieren in 'members':", err.message);
@@ -228,6 +229,11 @@ app.post("/import-members", upload.single("file"), (req, res) => {
     }
   });
 });
+
+function convertExcelDate(excelDate) {
+  const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+  return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+}
   
   // API: Einzelnes Mitglied abrufen
   app.get("/members/:id", (req, res) => {
@@ -253,7 +259,7 @@ app.post("/import-members", upload.single("file"), (req, res) => {
       enrollmentYear,
       joinDate,
       expectedExitDate,
-      actualExit,
+      autoExit,
     } = req.body;
   
     db.run(
@@ -270,7 +276,7 @@ app.post("/import-members", upload.single("file"), (req, res) => {
         enrollmentYear,
         joinDate,
         expectedExitDate,
-        actualExit,
+        autoExit,
         req.params.id,
       ],
       function (err) {

@@ -23,7 +23,7 @@ function loadMembers() {
               <td>${member.enrollmentYear || "-"}</td>
               <td>${member.joinDate || "-"}</td>
               <td>${member.expectedExitDate || "-"}</td>
-              <td>${member.actualExit || "nein"}</td>
+              <td>${member.autoExit || "-"}</td>
               <td>
                 <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})">Bearbeiten</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">Löschen</button>
@@ -129,7 +129,7 @@ document.getElementById("memberForm").addEventListener("submit", (e) => {
       enrollmentYear: document.getElementById("enrollmentYear").value,
       joinDate: document.getElementById("joinDate").value,
       expectedExitDate: document.getElementById("expectedExitDate").value,
-      actualExit: document.getElementById("actualExit").value,
+      autoExit: document.getElementById("autoExit").value,
     };
   
     fetch(`/members/${id}`, {
@@ -315,7 +315,7 @@ function viewMemberDetails(id) {
         document.getElementById("enrollmentYear").value = data.enrollmentYear || "";
         document.getElementById("joinDate").value = data.joinDate || "";
         document.getElementById("expectedExitDate").value = data.expectedExitDate || "";
-        document.getElementById("actualExit").value = data.actualExit || "nein";
+        document.getElementById("autoExit").value = data.autoExit || "";
   
         // Detailansicht anzeigen
         document.getElementById("memberDetails").classList.remove("d-none");
