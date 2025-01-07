@@ -1,17 +1,42 @@
 const membersTable = document.getElementById("membersTable");
 const paymentsTable = document.getElementById("paymentsTable");
+const searchInput = document.getElementById("searchInput");
+
+const debouncedLoadMembers = debounce(loadMembers, 500);
+searchInput.addEventListener("input", debouncedLoadMembers);
 
 // API URLs
 const MEMBERS_API = "/members";
 const PAYMENTS_API = "/payments";
 const IMPORT_API = "/import-members";
 
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
 // Mitglieder laden
 function loadMembers() {
     fetch("/members")
       .then((response) => response.json())
       .then((data) => {
-        membersTable.innerHTML = data.members
+        const searchQuery = searchInput.value.toLowerCase();
+        const filteredMembers = data.members.filter((member) => {
+          return (
+            (member.firstName && member.firstName.toLowerCase().includes(searchQuery)) ||
+            (member.lastName && member.lastName.toLowerCase().includes(searchQuery)) ||
+            (member.city && member.city.toLowerCase().includes(searchQuery)) ||
+            (member.childName && member.childName.toLowerCase().includes(searchQuery)) ||
+            (member.enrollmentYear && member.enrollmentYear.toString().includes(searchQuery)) ||
+            (member.joinDate && member.joinDate.toLowerCase().includes(searchQuery)) ||
+            (member.expectedExitDate && member.expectedExitDate.toLowerCase().includes(searchQuery)) ||
+            (member.autoExit && member.autoExit.toLowerCase().includes(searchQuery))
+          );
+        });
+        membersTable.innerHTML = filteredMembers
           .map(
             (member) => `
             <tr>
@@ -324,7 +349,7 @@ function viewMemberDetails(id) {
         // Speichern der ID für spätere Updates
         document.getElementById("memberForm").dataset.memberId = id;
       });
-  }22
+  }
 
 document.getElementById("exportOpenPaymentsButton").addEventListener("click", () => {
     fetch("/export-open-payments")
