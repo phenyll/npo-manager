@@ -13,42 +13,13 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 // Migration: Spalten hinzufügen
 const migrations = [
-  {
-    table: "members",
-    name: "childName",
-    sql: "ALTER TABLE members ADD COLUMN childName TEXT;",
-    defaultValue: null,
-  },
-  {
-    table: "members",
-    name: "enrollmentYear",
-    sql: "ALTER TABLE members ADD COLUMN enrollmentYear INTEGER;",
-    defaultValue: null,
-  },
-  {
-    table: "members",
-    name: "joinDate",
-    sql: "ALTER TABLE members ADD COLUMN joinDate TEXT;",
-    defaultValue: null,
-  },
-  {
-    table: "members",
-    name: "expectedExitDate",
-    sql: "ALTER TABLE members ADD COLUMN expectedExitDate TEXT;",
-    defaultValue: null,
-  },
-  {
-    table: "members",
-    name: "actualExit",
-    sql: "ALTER TABLE members ADD COLUMN actualExit TEXT;",
-    defaultValue: "nein",
-  },
+  /** example:
   {
     table: "payments",
     name: "paymentMethod",
     sql: "ALTER TABLE payments ADD COLUMN paymentMethod TEXT DEFAULT 'Bank';",
     defaultValue: "Bank",
-  },
+  },*/
 ];
 
 // Migration ausführen

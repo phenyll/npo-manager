@@ -23,7 +23,12 @@ const db = new sqlite3.Database(dbPath, (err) => {
         lastName TEXT NOT NULL,
         city TEXT,
         email TEXT,
-        phone TEXT
+        phone TEXT,
+        childName TEXT,
+        enrollmentYear INTEGER,
+        joinDate TEXT,
+        expectedExitDate TEXT,
+        actualExit TEXT
       )
     `);
     db.run(`
@@ -31,21 +36,13 @@ const db = new sqlite3.Database(dbPath, (err) => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         memberId INTEGER NOT NULL,
         year INTEGER NOT NULL,
+        paymentDate TEXT,
         amount REAL NOT NULL,
         status TEXT,
+        paymentMethod TEXT DEFAULT 'Bank',
         FOREIGN KEY (memberId) REFERENCES members (id)
       )
     `);
-    db.run(
-    "ALTER TABLE payments ADD COLUMN paymentDate TEXT",
-    (err) => {
-        if (err && !err.message.includes("duplicate column name")) {
-        console.error("Fehler beim Hinzufügen der Spalte paymentDate:", err.message);
-        } else {
-        console.log("Spalte paymentDate erfolgreich hinzugefügt oder existiert bereits.");
-        }
-    }
-    );
   }
 });
 
@@ -136,49 +133,101 @@ app.post("/payments", (req, res) => {
 
 // API: Excel-Import
 app.post("/import-members", upload.single("file"), (req, res) => {
-    const filePath = req.file.path;
-  
-    try {
-      // Excel-Datei lesen
-      const workbook = xlsx.readFile(filePath);
-      const sheetName = workbook.SheetNames[0];
-      const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-  
-      // Validierung und Mitglieder-Datenbank aktualisieren
-      db.serialize(() => {
+  const file = req.file;
+  if (!file) {
+    return res.status(400).send("Keine Datei hochgeladen.");
+  }
+
+  const workbook = xlsx.readFile(file.path);
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const sheetData = xlsx.utils.sheet_to_json(sheet);
+
+  let maxId = 0;
+
+  db.serialize(() => {
+    // Get the current max ID from the database
+    db.get("SELECT MAX(id) as maxId FROM members", (err, row) => {
+      if (err) {
+        console.error("Fehler beim Abrufen der max ID:", err.message);
+      } else {
+        maxId = row.maxId || 0;
+
         const stmt = db.prepare(
-          "INSERT INTO members (id, firstName, lastName, city, email, phone) VALUES (?, ?, ?, ?, ?, ?)"
+          `
+            INSERT INTO members (
+              id,
+              firstName,
+              lastName,
+              city,
+              email,
+              phone,
+              childName,
+              enrollmentYear,
+              joinDate,
+              expectedExitDate,
+              actualExit
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `
         );
-  
+
         sheetData.forEach((row) => {
-          const id = row["Nr."];
+          const id = row["Nr."] || ++maxId;
           const firstName = row["Vorname"] || "Unbekannt"; // Standardwert setzen
           const lastName = row["Nachname"];
+          if (!lastName) {
+            console.log("Zeile übersprungen, da Nachname fehlt.");
+            return;
+          }
           const city = row["Ort"];
           const email = row["E-Mail"];
           const phone = row["Telefon"];
-  
-          // Validierung: Überspringe Zeilen ohne Nachname
-          if (!lastName) {
-            console.warn(`Zeile ohne Nachname übersprungen:`, row);
-            return;
-          }
-  
-          stmt.run([id, firstName, lastName, city, email, phone]);
+          const childName = row["Kind"];
+          const enrollmentYear = row["Einschulung"];
+          const joinDate = row["Eintrittsdatum"] ? xlsx.SSF.format("yyyy-mm-dd", row["Eintrittsdatum"]) : null;
+          const expectedExitDate = row["Voraussichtlicher Austritt"] ? xlsx.SSF.format("yyyy-mm-dd", row["Voraussichtlicher Austritt"]) : null;
+          const actualExit = row["Austritt (ja)"] || "nein"; // Standardwert setzen
+
+          stmt.run(
+            id,
+            firstName,
+            lastName,
+            city,
+            email,
+            phone,
+            childName || null,
+            enrollmentYear || null,
+            joinDate,
+            expectedExitDate,
+            actualExit || null,
+            (err) => {
+              if (err) {
+                console.error("Fehler beim Importieren in 'members':", err.message);
+              }
+            }
+          );
         });
-  
-        stmt.finalize();
-      });
-  
-      // Temporäre Datei löschen
-      fs.unlinkSync(filePath);
-  
-      res.status(200).send("Mitglieder erfolgreich importiert!");
-    } catch (err) {
-      console.error("Fehler beim Importieren:", err.message);
-      res.status(500).send("Fehler beim Importieren der Datei.");
+
+        stmt.finalize((err) => {
+          if (err) {
+            console.error("Fehler beim Finalisieren des Statements:", err.message);
+            return res.status(500).send("Fehler beim Importieren der Mitglieder.");
+          } else {
+            console.log("Mitglieder erfolgreich importiert.");
+            return res.status(200).send("Mitglieder erfolgreich importiert.");
+          }
+        });
+      }
+    });
+  });
+
+  fs.unlink(file.path, (err) => {
+    if (err) {
+      console.error("Fehler beim Löschen der hochgeladenen Datei:", err.message);
     }
   });
+});
   
   // API: Einzelnes Mitglied abrufen
   app.get("/members/:id", (req, res) => {
