@@ -102,15 +102,25 @@ app.post("/members", (req, res) => {
   
 
 // API: Beiträge abrufen
+// API: Beiträge abrufen
 app.get("/payments", (req, res) => {
-    db.all("SELECT * FROM payments", [], (err, rows) => {
-      if (err) {
-        res.status(500).send(err.message);
-      } else {
-        res.json({ payments: rows });
-      }
-    });
+  const { memberId } = req.query;
+  let sql = "SELECT * FROM payments";
+  const params = [];
+
+  if (memberId) {
+    sql += " WHERE memberId = ?";
+    params.push(memberId);
+  }
+
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      res.status(500).send(err.message);
+    } else {
+      res.json({ payments: rows });
+    }
   });
+});
   
 
 // API: Beitrag hinzufügen

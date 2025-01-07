@@ -1,6 +1,17 @@
 const membersTable = document.getElementById("membersTable");
 const paymentsTable = document.getElementById("paymentsTable");
 const searchInput = document.getElementById("searchInput");
+const paymentSearchInput = document.getElementById("paymentSearchInput");
+
+paymentSearchInput.addEventListener("input", function() {
+  const filter = this.value.toLowerCase();
+  const rows = document.querySelectorAll('#paymentsTable tr');
+  rows.forEach(row => {
+    const memberIdCell = row.querySelector('td:first-child');
+    const matches = memberIdCell && memberIdCell.textContent.toLowerCase()===filter;
+    row.style.display = filter?(matches ? '' : 'none'):'';
+  });
+});
 
 const debouncedLoadMembers = debounce(loadMembers, 500);
 searchInput.addEventListener("input", debouncedLoadMembers);
