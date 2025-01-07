@@ -186,9 +186,9 @@ app.post("/import-members", upload.single("file"), (req, res) => {
           const childName = row["Kind"];
           const enrollmentYear = row["Einschulung"];
           
-          const joinDate = row["Eintrittsdatum"] ? convertExcelDate(row["Eintrittsdatum"]) : null;
-          const expectedExitDate = row["Voraussichtlicher Austritt"] ? convertExcelDate(row["Voraussichtlicher Austritt"]) : null;
-          const autoExit = row["Austritt (ja)"] ? convertExcelDate(row["Austritt (ja)"]) : null;
+          const joinDate = convertExcelDate(row["Eintrittsdatum"]);
+          const expectedExitDate = convertExcelDate(row["Voraussichtlicher Austritt"]);
+          const autoExit = convertExcelDate(row["Austritt (ja)"]);
 
           stmt.run(
             id,
@@ -231,8 +231,30 @@ app.post("/import-members", upload.single("file"), (req, res) => {
 });
 
 function convertExcelDate(excelDate) {
-  const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
-  return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+  if (typeof excelDate === 'number') {
+    if (excelDate >= 1000 && excelDate <= 9999) {
+      // Wenn die Zahl eine 4-stellige Jahreszahl ist
+      return `${excelDate}-12-31`;
+    } else {
+      // Wenn die Zahl ein Excel-Datum ist
+      const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+      return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+    }
+  } else if (typeof excelDate === 'string') {
+    if (/^\d{4}$/.test(excelDate)) {
+      // Wenn die Zelle nur eine Jahreszahl enthält
+      const year = parseInt(excelDate, 10);
+      return `${year}-12-31`;
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(excelDate)) {
+      // Wenn die Zelle ein Datum im Format YYYY-MM-DD enthält
+      return excelDate;
+    } else {
+      const date = new Date(excelDate);
+      return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+    }
+  } else {
+    return null;
+  }
 }
   
   // API: Einzelnes Mitglied abrufen
