@@ -61,13 +61,22 @@ function loadMembers() {
               <td>${member.expectedExitDate || "-"}</td>
               <td>${member.autoExit || "-"}</td>
               <td>
-                <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})">Bearbeiten</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">Löschen</button>
+                <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})">📝</button>
+                <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})">💶</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">🚮</button>
               </td>
             </tr>`
           )
           .join("");
       });
+  }
+
+  function viewMemberPayments(memberId) {
+    const paymentsTab = new bootstrap.Tab(document.querySelector('#payments-tab'));
+    paymentsTab.show();
+    paymentSearchInput.value = memberId;
+    const event = new Event('input');
+    paymentSearchInput.dispatchEvent(event);
   }
   
   //Beiträge laden
