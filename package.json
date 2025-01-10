@@ -1,5 +1,5 @@
 {
-  "name": "fv-schloeben",
+  "name": "ngo-manager",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "description": "",
   "dependencies": {
     "express": "^4.21.2",
