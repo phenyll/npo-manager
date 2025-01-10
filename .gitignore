@@ -1,2 +1,4 @@
 node_modules/
 database/club.db
+.idea/
+.DS_Store
