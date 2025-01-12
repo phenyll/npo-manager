@@ -57,9 +57,9 @@ function loadMembers() {
               <td>${member.city}</td>
               <td>${member.childName || "-"}</td>
               <td>${member.enrollmentYear || "-"}</td>
-              <td>${member.joinDate || "-"}</td>
-              <td>${member.expectedExitDate || "-"}</td>
-              <td>${member.autoExit || "-"}</td>
+              <td>${formatDate(member.joinDate) || "-"}</td>
+              <td>${formatDate(member.expectedExitDate) || "-"}</td>
+              <td>${formatDate(member.autoExit) || "-"}</td>
               <td>
                 <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})">📝</button>
                 <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})">💶</button>
@@ -369,6 +369,16 @@ function viewMemberDetails(id) {
         // Speichern der ID für spätere Updates
         document.getElementById("memberForm").dataset.memberId = id;
       });
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    if (isNaN(date)) return null;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
   }
 
 document.getElementById("exportOpenPaymentsButton").addEventListener("click", () => {
