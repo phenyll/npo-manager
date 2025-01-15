@@ -61,9 +61,11 @@ function loadMembers() {
               <td>${formatDate(member.expectedExitDate) || "-"}</td>
               <td>${formatDate(member.autoExit) || "-"}</td>
               <td>
-                <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})">📝</button>
-                <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})">💶</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">🚮</button>
+                <div style="white-space: nowrap">
+                    <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})">📝</button>
+                    <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})">💶</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">🚮</button>
+                </div>
               </td>
             </tr>`
           )

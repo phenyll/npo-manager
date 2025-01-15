@@ -115,4 +115,9 @@ body {
     background-color: #007bff;
     border-color: #007bff;
   }
-  
+
+/* Prevents wrapping of action buttons in the members table */
+#membersTable td:last-child {
+  white-space: nowrap;
+  width: 150px; /* Optional, um sicherzustellen, dass genug Platz vorhanden ist */
+}
