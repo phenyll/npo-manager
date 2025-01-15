@@ -395,14 +395,15 @@ app.put("/payments/:id/pay", (req, res) => {
         : /^\d{2}\.\d{2}\.\d{4}$/.test(paymentDate)
             ? paymentDate.split('.').reverse().join('-')
             : null;
+    const amount = req.body.amount;
 
     if (!parsedDate) {
         return res.status(400).send("Ungültiges Datum.");
     }
 
     db.run(
-        "UPDATE payments SET status = ?, paymentDate = ?, paymentMethod = ? WHERE id = ?",
-        ["gezahlt", parsedDate, paymentMethod, id],
+        "UPDATE payments SET status = ?, paymentDate = ?, paymentMethod = ?, amount = ? WHERE id = ?",
+        ["gezahlt", parsedDate, paymentMethod, amount, id],
       function (err) {
         if (err) {
           res.status(500).send(err.message);

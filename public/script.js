@@ -85,6 +85,7 @@ function loadMembers() {
   async function loadPayments() {
     const response = await fetch("/payments");
     const data = await response.json();
+    window.payments = data.payments;
   
     paymentsTable.innerHTML = data.payments
       .map(
@@ -284,12 +285,13 @@ document.getElementById("memberForm").addEventListener("submit", (e) => {
     const today = new Date().toISOString().split("T")[0].split("-").reverse().join(".");
     const paymentDate = prompt("Bezahlt am:", today);
     const paymentMethod = prompt("Zahlweg (Bank/Bar):", "Bank");
+    const amount = parseFloat(prompt("Betrag:", window.payments.find(p => p.id === id).amount));
   
     if (paymentDate) {
       fetch(`/payments/${id}/pay`, {
         method: "PUT", // Methode muss PUT sein
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentDate, paymentMethod }),
+        body: JSON.stringify({ paymentDate, paymentMethod, amount}),
       })
         .then((response) => {
           if (response.ok) {
