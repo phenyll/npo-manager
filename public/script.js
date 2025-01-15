@@ -8,7 +8,7 @@ paymentSearchInput.addEventListener("input", function() {
   const rows = document.querySelectorAll('#paymentsTable tr');
   rows.forEach(row => {
     const memberIdCell = row.querySelector('td:first-child');
-    const matches = memberIdCell && memberIdCell.textContent.toLowerCase().indexOf(filter) > -1;
+    const matches = memberIdCell && filter.split(' ').every(word => memberIdCell.textContent.toLowerCase().includes(word));
     row.style.display = filter?(matches ? '' : 'none'):'';
   });
 });
@@ -34,6 +34,7 @@ function loadMembers() {
     fetch("/members")
       .then((response) => response.json())
       .then((data) => {
+        window.members = data.members;
         const searchQuery = searchInput.value.toLowerCase();
         const filteredMembers = data.members.filter((member) => {
           return (
@@ -76,7 +77,7 @@ function loadMembers() {
   function viewMemberPayments(memberId) {
     const paymentsTab = new bootstrap.Tab(document.querySelector('#payments-tab'));
     paymentsTab.show();
-    paymentSearchInput.value = memberId;
+    paymentSearchInput.value = `${memberId} ${window.members.find(m => m.id === memberId).firstName} ${window.members.find(m => m.id === memberId).lastName}`;
     const event = new Event('input');
     paymentSearchInput.dispatchEvent(event);
   }
