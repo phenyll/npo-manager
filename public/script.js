@@ -8,7 +8,7 @@ paymentSearchInput.addEventListener("input", function() {
   const rows = document.querySelectorAll('#paymentsTable tr');
   rows.forEach(row => {
     const memberIdCell = row.querySelector('td:first-child');
-    const matches = memberIdCell && memberIdCell.textContent.toLowerCase()===filter;
+    const matches = memberIdCell && memberIdCell.textContent.toLowerCase().indexOf(filter) > -1;
     row.style.display = filter?(matches ? '' : 'none'):'';
   });
 });
