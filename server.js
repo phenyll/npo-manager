@@ -389,11 +389,20 @@ app.get("/payments/:id", (req, res) => {
   // API: Beitrag als bezahlt markieren
 app.put("/payments/:id/pay", (req, res) => {
     const { id } = req.params;
-    const { paymentDate } = req.body;
-  
+    const { paymentDate, paymentMethod } = req.body;
+    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(paymentDate)
+        ? paymentDate
+        : /^\d{2}\.\d{2}\.\d{4}$/.test(paymentDate)
+            ? paymentDate.split('.').reverse().join('-')
+            : null;
+
+    if (!parsedDate) {
+        return res.status(400).send("Ungültiges Datum.");
+    }
+
     db.run(
-      "UPDATE payments SET status = ?, paymentDate = ? WHERE id = ?",
-      ["gezahlt", paymentDate, id],
+        "UPDATE payments SET status = ?, paymentDate = ?, paymentMethod = ? WHERE id = ?",
+        ["gezahlt", parsedDate, paymentMethod, id],
       function (err) {
         if (err) {
           res.status(500).send(err.message);

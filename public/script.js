@@ -94,13 +94,13 @@ function loadMembers() {
           <td>${payment.year}</td>
           <td>${payment.amount} €</td>
           <td>${payment.status}</td>
-          <td>${payment.paymentMethod || "Bank"}</td>
+          <td>${payment.paymentMethod || "-"}</td>
           <td>
             <button class="btn btn-info btn-sm" onclick="viewPaymentDetails(${payment.id})">Bearbeiten</button>
             ${
               payment.status === "offen"
                 ? `<button class="btn btn-success btn-sm" onclick="markAsPaid(${payment.id})">Bezahlt</button>`
-                : `<span class="text-success">Bezahlt am ${payment.paymentDate || "unbekannt"}</span>`
+                  : `<span class="text-success">Bezahlt am ${formatDate(payment.paymentDate) || "unbekannt"}</span>`
             }
           </td>
         </tr>`
@@ -281,14 +281,15 @@ document.getElementById("memberForm").addEventListener("submit", (e) => {
   });  
 
   function markAsPaid(id) {
-    const today = new Date().toISOString().split("T")[0];
-    const paymentDate = prompt("Bezahlt am (YYYY-MM-DD):", today);
+    const today = new Date().toISOString().split("T")[0].split("-").reverse().join(".");
+    const paymentDate = prompt("Bezahlt am:", today);
+    const paymentMethod = prompt("Zahlweg (Bank/Bar):", "Bank");
   
     if (paymentDate) {
       fetch(`/payments/${id}/pay`, {
         method: "PUT", // Methode muss PUT sein
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentDate }),
+        body: JSON.stringify({ paymentDate, paymentMethod }),
       })
         .then((response) => {
           if (response.ok) {
