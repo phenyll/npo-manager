@@ -86,12 +86,24 @@ function loadMembers() {
     const response = await fetch("/payments");
     const data = await response.json();
     window.payments = data.payments;
+
+    const memberResponse = await fetch("/members");
+    const members = await memberResponse.json();
+    const memberfinder = (id) => {
+        const m = members.members.find((m) => m.id === id);
+        return function memberFormatter (fields){
+            return fields.map((field) => m[field] || "-").join(" ");
+        }
+    }
   
     paymentsTable.innerHTML = data.payments
       .map(
         (payment) => `
         <tr>
-          <td>${payment.memberId}</td>
+          <td>
+            <span class="pill">${payment.memberId}</span>
+            ${memberfinder(payment.memberId)(["firstName", "lastName"])}
+          </td>
           <td>${payment.year}</td>
           <td>${payment.amount} €</td>
           <td>${payment.status}</td>

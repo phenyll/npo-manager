@@ -6,13 +6,13 @@ body {
     margin: 0;
     padding: 0;
   }
-  
+
   h1 {
     font-size: 2.5rem;
     margin-bottom: 1rem;
     color: #007bff;
   }
-  
+
   /* Tabellen-Styling */
   table {
     width: 100%;
@@ -20,28 +20,28 @@ body {
     margin-bottom: 1rem;
     background-color: #fff;
   }
-  
+
   table th,
   table td {
     padding: 0.75rem;
     text-align: left;
     border: 1px solid #dee2e6;
   }
-  
+
   table th {
     background-color: #e9ecef;
     font-weight: bold;
   }
-  
+
   table tr:nth-child(even) {
     background-color: #f2f2f2;
   }
-  
+
   /* Buttons */
   button {
     cursor: pointer;
   }
-  
+
   button.btn-primary {
     background-color: #007bff;
     border: none;
@@ -49,11 +49,11 @@ body {
     padding: 0.5rem 1rem;
     border-radius: 4px;
   }
-  
+
   button.btn-primary:hover {
     background-color: #0056b3;
   }
-  
+
   button.btn-warning {
     background-color: #ffc107;
     border: none;
@@ -61,11 +61,11 @@ body {
     padding: 0.5rem 1rem;
     border-radius: 4px;
   }
-  
+
   button.btn-warning:hover {
     background-color: #e0a800;
   }
-  
+
   button.btn-danger {
     background-color: #dc3545;
     border: none;
@@ -73,23 +73,23 @@ body {
     padding: 0.5rem 1rem;
     border-radius: 4px;
   }
-  
+
   button.btn-danger:hover {
     background-color: #c82333;
   }
-  
+
   /* Formular Styling */
   form {
     margin-top: 1rem;
   }
-  
+
   input[type="file"] {
     border: 1px solid #dee2e6;
     padding: 0.5rem;
     border-radius: 4px;
     background-color: #fff;
   }
-  
+
   button[type="submit"] {
     background-color: #28a745;
     border: none;
@@ -97,11 +97,11 @@ body {
     padding: 0.5rem 1rem;
     border-radius: 4px;
   }
-  
+
   button[type="submit"]:hover {
     background-color: #218838;
   }
-  
+
   /* Navigation Tabs */
   .nav-tabs .nav-link {
     color: #495057;
@@ -109,7 +109,7 @@ body {
     border-bottom: none;
     margin-right: 0.5rem;
   }
-  
+
   .nav-tabs .nav-link.active {
     color: #fff;
     background-color: #007bff;
@@ -120,4 +120,14 @@ body {
 #membersTable td:last-child {
   white-space: nowrap;
   width: 150px; /* Optional, um sicherzustellen, dass genug Platz vorhanden ist */
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.25em 0.75em;
+  font-size: 0.75em;
+  font-weight: 700;
+  color: #fff;
+  background-color: #007bff;
+  border-radius: 10rem;
 }
