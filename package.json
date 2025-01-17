@@ -1,5 +1,5 @@
 {
-  "name": "ngo-manager",
+  "name": "npo-manager",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
@@ -12,6 +12,7 @@
   "description": "",
   "dependencies": {
     "express": "^4.21.2",
+    "express-session": "^1.18.1",
     "multer": "^1.4.5-lts.1",
     "sqlite3": "^5.1.7",
     "xlsx": "^0.18.5"

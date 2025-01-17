@@ -4,10 +4,13 @@ const multer = require("multer");
 const xlsx = require("xlsx");
 const path = require("path");
 const fs = require("fs");
+const session = require('express-session');
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
+app.use(logRequest);
 
 // Datenbank initialisieren
 const dbPath = path.resolve(__dirname, "database", "club.db");
@@ -43,11 +46,109 @@ const db = new sqlite3.Database(dbPath, (err) => {
         FOREIGN KEY (memberId) REFERENCES members (id)
       )
     `);
+    // users table with username, salt, hash
+    db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        hash TEXT NOT NULL
+      )
+    `);
   }
 });
 
 // Middleware für Datei-Uploads
 const upload = multer({ dest: "uploads/" });
+
+app.use(session({
+    secret: 'qp47flzrqblciuvbaoqrzblqWAERBSTOAIRNVY LI<BARUAÖuaruöARUHGSEURÖbalrhfbvlsiearbvajbrl<', // Ändere dies zu einem sicheren geheimen Schlüssel
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false } // Setze auf true, wenn HTTPS verwendet wird
+}));
+
+// Middleware zur Überprüfung der Authentifizierung
+function isAuthenticated(req, res, next) {
+    if (req.session.user || req.path === '/login' || req.path === '/authenticate') {
+        return next();
+    } else {
+        res.status(401).send('Nicht authentifiziert');
+    }
+}
+
+function logRequest(req, res, next) {
+    // apache-style logging, mit response time, length und status code
+    console.log(`[${new Date().toISOString()}] ${req.method} - ${req.path} - ${req.ip} - ${res.statusCode}`);
+    next();
+}
+
+// Login-Seite
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/login');
+});
+
+// Login-Handler
+app.post('/authenticate', (req, res) => {
+    const { username, password } = req.body;
+    // Überprüfe die Anmeldedaten (hier ein einfaches Beispiel)
+    if (username){
+        db.get("SELECT * FROM users WHERE username = ?", [username], (err, row) => {
+            if (err) {
+                console.error("SQL-Fehler beim Abrufen des Benutzers:", err.message);
+                res.status(500).redirect('/login');
+            } else if (row) {
+                // Überprüfe das Passwort
+                const hash = hashPassword(username, password, row.salt);
+                if (row.hash === hash) {
+                    console.log('Anmeldung erfolgreich');
+                    req.session.user = username;
+                    res.status(307).redirect('/');
+                } else {
+                    console.log(`Anmeldung fehlgeschlagen, Passwort falsch für Benutzer ${username}, versuchte hash '${hash}'`);
+                    res.status(401).redirect('/login');
+                }
+            } else {
+                console.log('Anmeldung fehlgeschlagen, Benutzer nicht gefunden:', username);
+                res.status(401).redirect('/login');
+            }
+        })
+    }
+});
+
+function hashPassword(username, password, salt) {
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update
+    (username + password + salt).digest
+    ('hex');
+}
+
+// Logout-Handler
+app.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/login');
+});
+
+// Schütze die Routen
+app.use(isAuthenticated);
+
+// API: Benutzer abrufen
+app.get("/users/me", (req, res) => {
+    db.get("SELECT id, username FROM users WHERE username = ?", [req.session.user], (err, row) => {
+        if (err) {
+            res.status(500).send(err.message);
+        } else if (!row) {
+            res.status(404).send("Benutzer nicht gefunden.");
+        } else {
+            res.json({username: row.username});
+        }
+    })
+});
 
 // API: Mitglieder abrufen
 app.get("/members", (req, res) => {

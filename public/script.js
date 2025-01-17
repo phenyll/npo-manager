@@ -13,6 +13,8 @@ paymentSearchInput.addEventListener("input", function() {
   });
 });
 
+window.setTimeout(setUserInfo, 500);
+
 const debouncedLoadMembers = debounce(loadMembers, 500);
 searchInput.addEventListener("input", debouncedLoadMembers);
 
@@ -20,6 +22,7 @@ searchInput.addEventListener("input", debouncedLoadMembers);
 const MEMBERS_API = "/members";
 const PAYMENTS_API = "/payments";
 const IMPORT_API = "/import-members";
+const USERS_API = "/users";
 
 function debounce(func, wait) {
   let timeout;
@@ -29,10 +32,31 @@ function debounce(func, wait) {
   };
 }
 
+function setUserInfo(){
+    fetch("/users/me")
+        .then((response) => {
+            if (response.status === 200) {
+                return response.json();
+            } else {
+                window.location.href = "/login";
+                return;
+            }
+        })
+        .then((data) => {
+            document.getElementById("loggedInUser").innerText = data.username;
+        });
+}
+
 // Mitglieder laden
 function loadMembers() {
     fetch("/members")
-      .then((response) => response.json())
+      .then((response) => {
+          if (response.status === 401) {
+              window.location.href = "/login";
+              return;
+          }
+          return response.json();
+      })
       .then((data) => {
         window.members = data.members;
         const searchQuery = searchInput.value.toLowerCase();
