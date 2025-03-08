@@ -26,11 +26,11 @@ router.get("/", (req, res) => {
 });
 
 router.post("/", (req, res) => {
-    const { memberId, year, amount, status, paymentMethod } = req.body;
+    const { memberId, year, amount, status, paymentMethod, paymentDate} = req.body;
 
     db.run(
-        "INSERT INTO payments (memberId, year, amount, status, paymentMethod) VALUES (?, ?, ?, ?, ?)",
-        [memberId, year, amount, status, paymentMethod || "Bank"],
+        "INSERT INTO payments (memberId, year, amount, status, paymentMethod, paymentDate) VALUES (?, ?, ?, ?, ?, ?)",
+        [memberId, year, amount, status, paymentMethod || "Bank", paymentDate || null],
         function (err) {
             if (err) {
                 res.status(500).send(err.message);

@@ -165,19 +165,23 @@ document.getElementById("addMemberButton").addEventListener("click", async () =>
 });
 
 // Neuer Beitrag hinzufügen
-document.getElementById("addPaymentButton").addEventListener("click", async () => {
-    const memberId = parseInt(prompt("Mitglied Nr:"));
-    const year = parseInt(prompt("Jahr:"));
-    const amount = parseFloat(prompt("Betrag:"));
-    const status = prompt("Status (offen/gezahlt):");
-    const paymentMethod = prompt("Zahlweg (Bank/Bar):", "Bank");
-  
+async function addNewPayment(ref){
+    const memberId = parseInt(ref.querySelector("#newPayment-memberNumber").value);
+    const year = parseInt(ref.querySelector("#newPayment-paymentYear").value);
+    const amount = parseFloat(ref.querySelector("#newPayment-paymentAmount").value);
+    const status = ref.querySelector("#newPayment-paymentStatus").value;
+    const paymentMethod = ref.querySelector("#newPayment-paymentMethod").value;
+    let paymentDate = ref.querySelector("#newPayment-paymentDate").value;
+
+    paymentDate = paymentDate ? formatDateForServer(paymentDate) : null;
+
     const newPayment = {
-      memberId,
-      year,
-      amount,
-      status,
-      paymentMethod: paymentMethod || "Bank",
+        memberId,
+        year,
+        amount,
+        status,
+        paymentMethod: paymentMethod || "Bank",
+        paymentDate
     };
   
     try {
@@ -197,8 +201,7 @@ document.getElementById("addPaymentButton").addEventListener("click", async () =
       console.error("Fehler:", error);
       alert("Fehler beim Hinzufügen des Beitrags.");
     }
-  });
-  
+}
 
 document.getElementById("memberForm").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -422,6 +425,14 @@ function viewMemberDetails(id) {
     const year = date.getFullYear();
     return `${day}.${month}.${year}`;
   }
+
+function formatDateForServer(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 document.getElementById("exportOpenPaymentsButton").addEventListener("click", () => {
     fetch("/export-open-payments")
