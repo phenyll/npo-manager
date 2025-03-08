@@ -87,9 +87,9 @@ function loadMembers() {
               <td>${formatDate(member.autoExit) || "-"}</td>
               <td>
                 <div style="white-space: nowrap">
-                    <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})">📝</button>
-                    <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})">💶</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})">🚮</button>
+                    <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})" title="Mitgliedsdaten bearbeiten">📝</button>
+                    <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})" title="Zahlungen vom Mitglied verwalten">💶</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})" title="Mitglied löschen">🚮</button>
                 </div>
               </td>
             </tr>`
