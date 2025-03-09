@@ -51,9 +51,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 description TEXT
             )
         `);
-        db.run(`INSERT OR IGNORE INTO roles (name, description) VALUES ('admin', 'Administrator');`);
-        db.run(`INSERT OR IGNORE INTO roles (name, description) VALUES ('editor', 'Verwalter');`);
-        // db.run(`INSERT OR IGNORE INTO roles (name, description) VALUES ('member', 'Mitglied');`);
+        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (1, 'admin', 'Administrator');`);
+        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (2, 'editor', 'Verwalter');`);
+        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (3, 'none', 'Keine bestimmte Rolle');`);
         db.run(`
             CREATE TABLE IF NOT EXISTS permissions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,11 +61,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 description TEXT
             )
         `);
-        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('login', 'Darf sich einloggen');`);
-        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('create-user', 'Andere Benutzer erstellen');`);
-        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('list-user', 'Andere Benutzer auflisten');`);
-        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('delete-user', 'Andere Benutzer löschen');`);
-        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('edit-user', 'Andere Benutzer ändern');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (1, 'login', 'Darf sich einloggen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (2, 'create-user', 'Andere Benutzer erstellen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (3, 'list-user', 'Andere Benutzer auflisten');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (4, 'delete-user', 'Andere Benutzer löschen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (5, 'edit-user', 'Andere Benutzer ändern');`);
         db.run(`
             CREATE TABLE IF NOT EXISTS user_roles (
                 user_id INTEGER NOT NULL,
@@ -84,6 +84,16 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 PRIMARY KEY (role_id, permission_id)
             )
         `);
+        // Admin darf alles
+        db.run(`INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (1, 1);`); // Erster Nutzer ist Admin
+        db.run(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (1, 1);`); //einloggen
+        db.run(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (1, 2);`); //Benutzer erstellen
+        db.run(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (1, 3);`); //Benutzer auflisten
+        db.run(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (1, 4);`); //Benutzer löschen
+        db.run(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (1, 5);`); //Benutzer ändern
+        // Editor darf nur Benutzer auflisten
+        db.run(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (2, 1);`); //einloggen
+        db.run(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (2, 3);`); //Benutzer auflisten
     }
 });
 
