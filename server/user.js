@@ -84,7 +84,13 @@ router.delete("/users/:id", (req, res) => {
         if (err) {
             res.status(500).send(err.message);
         } else if (this.changes > 0) {
-            res.send(`Benutzer mit ID ${id} erfolgreich gelöscht`);
+            db.run("DELETE FROM user_roles WHERE user_id = ?", [id], function (err) {
+                if (err) {
+                    res.status(500).send(err.message);
+                    return;
+                }
+                res.send(`Benutzer mit ID ${id} erfolgreich gelöscht`);
+            });
         } else {
             res.status(404).send(`Benutzer mit ID ${id} nicht gefunden`);
         }
