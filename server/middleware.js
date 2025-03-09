@@ -1,9 +1,11 @@
 // server/middleware.js
+const path = require("path");
+
 function isAuthenticated(req, res, next) {
-    if (req.session.user || req.path === '/login' || req.path === '/authenticate') {
+    if (req.session.user || req.path === '/login' || req.path === '/authenticate' || req.path.startsWith('/static')) {
         return next();
     } else {
-        res.status(401).send('Nicht authentifiziert');
+        res.status(401).sendFile(path.join(__dirname, '../public', '401.html'));
     }
 }
 

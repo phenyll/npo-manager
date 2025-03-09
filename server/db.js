@@ -44,6 +44,45 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 hash TEXT NOT NULL
             )
         `);
+        db.run(`
+            CREATE TABLE IF NOT EXISTS roles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                description TEXT
+            )
+        `);
+        db.run(`INSERT OR IGNORE INTO roles (name, description) VALUES ('admin', 'Administrator');`);
+        db.run(`INSERT OR IGNORE INTO roles (name, description) VALUES ('editor', 'Verwalter');`);
+        // db.run(`INSERT OR IGNORE INTO roles (name, description) VALUES ('member', 'Mitglied');`);
+        db.run(`
+            CREATE TABLE IF NOT EXISTS permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                description TEXT
+            )
+        `);
+        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('login', 'Darf sich einloggen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('create-user', 'Andere Benutzer erstellen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('list-user', 'Andere Benutzer auflisten');`);
+        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('delete-user', 'Andere Benutzer löschen');`);
+        db.run(`
+            CREATE TABLE IF NOT EXISTS user_roles (
+                user_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (role_id) REFERENCES roles (id),
+                PRIMARY KEY (user_id, role_id)
+            )
+        `);
+        db.run(`
+            CREATE TABLE IF NOT EXISTS role_permissions (
+                role_id INTEGER NOT NULL,
+                permission_id INTEGER NOT NULL,
+                FOREIGN KEY (role_id) REFERENCES roles (id),
+                FOREIGN KEY (permission_id) REFERENCES permissions (id),
+                PRIMARY KEY (role_id, permission_id)
+            )
+        `);
     }
 });
 
