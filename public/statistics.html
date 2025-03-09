@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiken</title>
+    <link href="/static/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="container">
+    <h1>Statistiken</h1>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Mitgliederstatistiken</h2>
+            <div id="totalMembers"></div>
+            <div id="newMembersThisYear"></div>
+        </div>
+        <div class="col-md-6">
+            <h2>Beitragsstatistiken</h2>
+            <div id="totalRevenueThisYear"></div>
+            <div id="averagePaymentPerMember"></div>
+            <div id="percentagePaidMembers"></div>
+        </div>
+    </div>
+
+    <a href="/main" class="btn btn-secondary mt-3">Zurück zur Hauptseite</a>
+</div>
+
+<script>
+    async function loadStatistics() {
+        // Mitgliederstatistiken abrufen
+        const membersResponse = await fetch('/members/statistics');
+        const membersData = await membersResponse.json();
+
+        document.getElementById('totalMembers').innerText = `Gesamte Mitglieder: ${membersData.totalMembers}`;
+        document.getElementById('newMembersThisYear').innerText = `Neue Mitglieder dieses Jahr: ${membersData.newMembersThisYear}`;
+
+        // Beitragsstatistiken abrufen
+        const paymentsResponse = await fetch('/payments/statistics');
+        const paymentsData = await paymentsResponse.json();
+
+        document.getElementById('totalRevenueThisYear').innerText = `Gesamtumsatz dieses Jahr: ${paymentsData.totalRevenueThisYear} €`;
+        document.getElementById('averagePaymentPerMember').innerText = `Durchschnittliche Zahlung pro Mitglied: ${paymentsData.averagePaymentPerMember} €`;
+        document.getElementById('percentagePaidMembers').innerText = `Prozentsatz der zahlenden Mitglieder: ${paymentsData.percentagePaidMembers}%`;
+    }
+
+    loadStatistics();
+</script>
+<script src="/static/bootstrap.bundle.min.js"></script>
+</body>
+</html>

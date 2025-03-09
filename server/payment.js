@@ -156,4 +156,38 @@ router.get("/export-open-payments", (req, res) => {
     );
 });
 
+router.get("/statistics", (req, res) => {
+    const currentYear = new Date().getFullYear();
+
+    db.get(`SELECT SUM(amount) AS totalRevenueThisYear FROM payments WHERE year = ? AND status = 'gezahlt'`, [currentYear], (err, totalRevenueRow) => {
+        if (err) {
+            return res.status(500).send(err.message);
+        }
+
+        db.get(`SELECT COUNT(DISTINCT memberId) AS paidMembers FROM payments WHERE year = ? AND status = 'gezahlt'`, [currentYear], (err, paidMembersRow) => {
+            if (err) {
+                return res.status(500).send(err.message);
+            }
+
+            db.get("SELECT COUNT(DISTINCT id) AS totalMembers FROM members", (err, totalMembersRow) => {
+                if (err) {
+                    return res.status(500).send(err.message);
+                }
+
+                const totalRevenueThisYear = totalRevenueRow.totalRevenueThisYear || 0;
+                const paidMembers = paidMembersRow.paidMembers || 0;
+                const totalMembers = totalMembersRow.totalMembers || 0;
+                const averagePaymentPerMember = totalMembers > 0 ? (totalRevenueThisYear / totalMembers).toFixed(2) : 0;
+                const percentagePaidMembers = totalMembers > 0 ? ((paidMembers / totalMembers) * 100).toFixed(2) : 0;
+
+                res.json({
+                    totalRevenueThisYear: totalRevenueThisYear,
+                    averagePaymentPerMember: averagePaymentPerMember,
+                    percentagePaidMembers: percentagePaidMembers
+                });
+            });
+        });
+    });
+});
+
 module.exports = router;

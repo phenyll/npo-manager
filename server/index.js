@@ -95,6 +95,10 @@ app.get('/main', (req, res) => {
     res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
+app.get('/statistics', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'statistics.html'));
+});
+
 app.use((req, res, next) => {
     res.status(404).sendFile(path.join(__dirname, '../public', '404.html'));
 });
