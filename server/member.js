@@ -9,6 +9,36 @@ const path = require('path');
 
 const upload = multer({ dest: 'uploads/' });
 
+router.get("/stats", (req, res) => {
+    const currentYear = new Date().getFullYear();
+    console.log("Mitgliederstatistiken für das Jahr", currentYear);
+
+    db.get("SELECT COUNT(*) AS totalMembers FROM members", (err, totalMembersRow) => {
+        if (err) {
+            console.error("Fehler beim Abrufen der Mitglieder-Statistiken:", err.message);
+            return res.status(500).send(err.message);
+        } else {
+            db.get(`SELECT COUNT(*) AS newMembersThisYear FROM members WHERE strftime('%Y', joinDate) = ?`, [currentYear], (err, newMembersRow) => {
+                if (err) {
+                    console.error("Fehler beim Abrufen der neuen Mitglieder:", err.message);
+                    return res.status(500).send(err.message);
+                }
+
+                const totalMembers = totalMembersRow.totalMembers;
+                const newMembersThisYear = newMembersRow.newMembersThisYear;
+
+                console.log("Mitglieder insgesamt:", totalMembers);
+                console.log("Neue Mitglieder in", currentYear, ":", newMembersThisYear);
+
+                res.json({
+                    totalMembers: totalMembers,
+                    newMembersThisYear: newMembersThisYear
+                });
+            });
+        }
+    });
+});
+
 router.get("/", (req, res) => {
   db.all("SELECT * FROM members", [], (err, rows) => {
     if (err) {
@@ -204,36 +234,6 @@ router.post("/import-members", upload.single("file"), (req, res) => {
       console.error("Fehler beim Löschen der hochgeladenen Datei:", err.message);
     }
   });
-});
-
-router.get("/statistics", (req, res) => {
-    const currentYear = new Date().getFullYear();
-    console.log("Mitgliederstatistiken für das Jahr", currentYear);
-
-    db.get("SELECT COUNT(*) AS totalMembers FROM members", (err, totalMembersRow) => {
-        if (err) {
-            console.error("Fehler beim Abrufen der Mitglieder-Statistiken:", err.message);
-            return res.status(500).send(err.message);
-        }
-
-        db.get(`SELECT COUNT(*) AS newMembersThisYear FROM members WHERE strftime('%Y', joinDate) = ?`, [currentYear], (err, newMembersRow) => {
-            if (err) {
-                console.error("Fehler beim Abrufen der neuen Mitglieder:", err.message);
-                return res.status(500).send(err.message);
-            }
-
-            const totalMembers = totalMembersRow.totalMembers;
-            const newMembersThisYear = newMembersRow.newMembersThisYear;
-
-            console.log("Mitglieder insgesamt:", totalMembers);
-            console.log("Neue Mitglieder in", currentYear, ":", newMembersThisYear);
-
-            res.json({
-                totalMembers: totalMembers,
-                newMembersThisYear: newMembersThisYear
-            });
-        });
-    });
 });
 
 function convertExcelDate(excelDate) {

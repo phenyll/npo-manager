@@ -75,6 +75,14 @@ app.get('/change-password', (req, res) => {
     res.sendFile(path.join(__dirname, '../public', 'changePassword.html'));
 });
 
+app.get('/main', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'index.html'));
+});
+
+app.get('/statistics', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'statistics.html'));
+});
+
 // Globale Authentifizierungs-Middleware
 app.use((req, res, next) => {
     if (!req.session.user && req.url !== '/' && req.url !== '/login' && req.url !== '/authenticate') {
@@ -90,14 +98,6 @@ app.use(isAuthenticated);
 app.use('/payments', paymentRoutes);
 app.use('/members', memberRoutes.router);
 app.use('/', userRoutes.router);
-
-app.get('/main', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'index.html'));
-});
-
-app.get('/statistics', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'statistics.html'));
-});
 
 app.use((req, res, next) => {
     res.status(404).sendFile(path.join(__dirname, '../public', '404.html'));

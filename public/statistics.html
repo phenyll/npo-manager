@@ -22,6 +22,8 @@
             <div id="totalRevenueThisYear"></div>
             <div id="averagePaymentPerMember"></div>
             <div id="percentagePaidMembers"></div>
+            <div id="totalOutstandingAmount"></div>
+            <div id="membersWithOutstandingPayments"></div>
         </div>
     </div>
 
@@ -31,19 +33,21 @@
 <script>
     async function loadStatistics() {
         // Mitgliederstatistiken abrufen
-        const membersResponse = await fetch('/members/statistics');
+        const membersResponse = await fetch('/members/stats');
         const membersData = await membersResponse.json();
 
         document.getElementById('totalMembers').innerText = `Gesamte Mitglieder: ${membersData.totalMembers}`;
         document.getElementById('newMembersThisYear').innerText = `Neue Mitglieder dieses Jahr: ${membersData.newMembersThisYear}`;
 
         // Beitragsstatistiken abrufen
-        const paymentsResponse = await fetch('/payments/statistics');
+        const paymentsResponse = await fetch('/payments/stats');
         const paymentsData = await paymentsResponse.json();
 
         document.getElementById('totalRevenueThisYear').innerText = `Gesamtumsatz dieses Jahr: ${paymentsData.totalRevenueThisYear} €`;
         document.getElementById('averagePaymentPerMember').innerText = `Durchschnittliche Zahlung pro Mitglied: ${paymentsData.averagePaymentPerMember} €`;
         document.getElementById('percentagePaidMembers').innerText = `Prozentsatz der zahlenden Mitglieder: ${paymentsData.percentagePaidMembers}%`;
+        document.getElementById('totalOutstandingAmount').innerText = `Ausstehende Zahlungen gesamt: ${paymentsData.totalOutstandingAmount} €`;
+        document.getElementById('membersWithOutstandingPayments').innerText = `Mitglieder mit ausstehenden Zahlungen: ${paymentsData.membersWithOutstandingPayments}`;
     }
 
     loadStatistics();

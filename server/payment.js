@@ -6,6 +6,64 @@ const xlsx = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 
+router.get("/stats", (req, res) => {
+    const currentYear = new Date().getFullYear();
+
+    db.get(`SELECT SUM(amount) AS totalRevenueThisYear FROM payments WHERE year = ? AND status = 'gezahlt'`, [currentYear], (err, totalRevenueRow) => {
+        if (err) {
+            console.error("Fehler beim Abrufen des Gesamtumsatzes:", err.message);
+            return res.status(500).send(err.message);
+        }
+
+        db.get(`SELECT COUNT(DISTINCT memberId) AS paidMembers FROM payments WHERE year = ? AND status = 'gezahlt'`, [currentYear], (err, paidMembersRow) => {
+            if (err) {
+                console.error("Fehler beim Abrufen der Anzahl zahlender Mitglieder:", err.message);
+                return res.status(500).send(err.message);
+            }
+
+            db.get("SELECT COUNT(DISTINCT id) AS totalMembers FROM members", (err, totalMembersRow) => {
+                if (err) {
+                    console.error("Fehler beim Abrufen der Gesamtmitgliederzahl:", err.message);
+                    return res.status(500).send(err.message);
+                }
+
+                // Neue Abfragen hinzugefügt
+                db.get(`SELECT SUM(amount) AS totalOutstandingAmount FROM payments WHERE year = ? AND status = 'offen'`, [currentYear], (err, totalOutstandingAmountRow) => {
+                    if (err) {
+                        console.error("Fehler beim Abrufen des ausstehenden Gesamtbetrags:", err.message);
+                        return res.status(500).send(err.message);
+                    }
+
+                    db.get(`SELECT COUNT(DISTINCT memberId) AS membersWithOutstandingPayments FROM payments WHERE year = ? AND status = 'offen'`, [currentYear], (err, membersWithOutstandingPaymentsRow) => {
+                        if (err) {
+                            console.error("Fehler beim Abrufen der Anzahl der Mitglieder mit ausstehenden Zahlungen:", err.message);
+                            return res.status(500).send(err.message);
+                        }
+
+                        const totalRevenueThisYear = totalRevenueRow.totalRevenueThisYear || 0;
+                        const paidMembers = paidMembersRow.paidMembers || 0;
+                        const totalMembers = totalMembersRow.totalMembers || 0;
+                        const averagePaymentPerMember = totalMembers > 0 ? (totalRevenueThisYear / totalMembers).toFixed(2) : 0;
+                        const percentagePaidMembers = totalMembers > 0 ? ((paidMembers / totalMembers) * 100).toFixed(2) : 0;
+
+                        // Ergebnisse der neuen Abfragen
+                        const totalOutstandingAmount = totalOutstandingAmountRow.totalOutstandingAmount || 0;
+                        const membersWithOutstandingPayments = membersWithOutstandingPaymentsRow.membersWithOutstandingPayments || 0;
+
+                        res.json({
+                            totalRevenueThisYear: totalRevenueThisYear,
+                            averagePaymentPerMember: averagePaymentPerMember,
+                            percentagePaidMembers: percentagePaidMembers,
+                            totalOutstandingAmount: totalOutstandingAmount,
+                            membersWithOutstandingPayments: membersWithOutstandingPayments
+                        });
+                    });
+                });
+            });
+        });
+    });
+});
+
 router.get("/", (req, res) => {
     const { memberId } = req.query;
     let sql = "SELECT * FROM payments";
@@ -154,40 +212,6 @@ router.get("/export-open-payments", (req, res) => {
             });
         }
     );
-});
-
-router.get("/statistics", (req, res) => {
-    const currentYear = new Date().getFullYear();
-
-    db.get(`SELECT SUM(amount) AS totalRevenueThisYear FROM payments WHERE year = ? AND status = 'gezahlt'`, [currentYear], (err, totalRevenueRow) => {
-        if (err) {
-            return res.status(500).send(err.message);
-        }
-
-        db.get(`SELECT COUNT(DISTINCT memberId) AS paidMembers FROM payments WHERE year = ? AND status = 'gezahlt'`, [currentYear], (err, paidMembersRow) => {
-            if (err) {
-                return res.status(500).send(err.message);
-            }
-
-            db.get("SELECT COUNT(DISTINCT id) AS totalMembers FROM members", (err, totalMembersRow) => {
-                if (err) {
-                    return res.status(500).send(err.message);
-                }
-
-                const totalRevenueThisYear = totalRevenueRow.totalRevenueThisYear || 0;
-                const paidMembers = paidMembersRow.paidMembers || 0;
-                const totalMembers = totalMembersRow.totalMembers || 0;
-                const averagePaymentPerMember = totalMembers > 0 ? (totalRevenueThisYear / totalMembers).toFixed(2) : 0;
-                const percentagePaidMembers = totalMembers > 0 ? ((paidMembers / totalMembers) * 100).toFixed(2) : 0;
-
-                res.json({
-                    totalRevenueThisYear: totalRevenueThisYear,
-                    averagePaymentPerMember: averagePaymentPerMember,
-                    percentagePaidMembers: percentagePaidMembers
-                });
-            });
-        });
-    });
 });
 
 module.exports = router;
