@@ -65,6 +65,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
         db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('create-user', 'Andere Benutzer erstellen');`);
         db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('list-user', 'Andere Benutzer auflisten');`);
         db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('delete-user', 'Andere Benutzer löschen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (name, description) VALUES ('edit-user', 'Andere Benutzer ändern');`);
         db.run(`
             CREATE TABLE IF NOT EXISTS user_roles (
                 user_id INTEGER NOT NULL,

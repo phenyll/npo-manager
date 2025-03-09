@@ -11,10 +11,10 @@ function hashPassword(username, password, salt) {
 }
 
 router.get("/users", (req, res) => {
-    // if (req.session.user !== 1) {
-    //     res.status(403).send('Nicht autorisiert');
-    //     return;
-    // }
+    if (!req.session.rights.includes('list-user')) {
+        res.status(403).send('Nicht autorisiert');
+        return;
+    }
     db.all("SELECT id, username FROM users", (err, rows) => {
         if (err) {
             res.status(500).send(err.message);
@@ -25,7 +25,7 @@ router.get("/users", (req, res) => {
 });
 
 router.post("/users", (req, res) => {
-    if (req.session.user !== 1) {
+    if (!req.session.rights.includes('create-user')) {
         res.status(403).send('Nicht autorisiert');
         return;
     }
@@ -60,7 +60,7 @@ router.get("/users/me", (req, res) => {
 });
 
 router.delete("/users/:id", (req, res) => {
-    if (req.session.user !== 1) {
+    if (!req.session.rights.includes('delete-user')) {
         res.status(403).send('Nicht autorisiert');
         return;
     }
@@ -92,7 +92,7 @@ router.delete("/users/:id", (req, res) => {
 // user.js
 // Alle Benutzer mit ihren Rollen abrufen
 router.get("/users-with-roles", (req, res) => {
-    if (req.session.user !== 1) {
+    if (!req.session.rights.includes('list-user')) {
         res.status(403).send('Nicht autorisiert');
         return;
     }
@@ -115,7 +115,7 @@ router.get("/users-with-roles", (req, res) => {
 
 // Rolle eines Benutzers aktualisieren
 router.put("/users/:id/role", (req, res) => {
-    if (req.session.user !== 1) {
+    if (!req.session.rights.includes('edit-user')) {
         res.status(403).send('Nicht autorisiert');
         return;
     }
