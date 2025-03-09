@@ -97,6 +97,46 @@ router.delete("/users/:id", (req, res) => {
     });
 });
 
+router.put("/users/me/password", (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).sendFile(path.join(__dirname, '../public', '401.html'));
+    }
+
+    const { oldPassword, newPassword } = req.body;
+    const username = req.session.user;
+
+    db.get("SELECT * FROM users WHERE username = ?", [username], (err, row) => {
+        if (err) {
+            console.error("SQL-Fehler beim Abrufen des Benutzers:", err.message);
+            return res.status(500).send(err.message);
+        }
+
+        if (!row) {
+            return res.status(404).send("Benutzer nicht gefunden.");
+        }
+
+        const hash = hashPassword(username, oldPassword, row.salt);
+        if (row.hash === hash) {
+            // Altes Passwort stimmt, neues Passwort hashen und speichern
+            const newSalt = require('crypto').randomBytes(16).toString('hex');
+            const newHash = hashPassword(username, newPassword, newSalt);
+
+            db.run("UPDATE users SET salt = ?, hash = ? WHERE username = ?", [newSalt, newHash, username], function (err) {
+                if (err) {
+                    console.error("SQL-Fehler beim Aktualisieren des Passworts:", err.message);
+                    return res.status(500).send(err.message);
+                }
+
+                console.log(`Passwort erfolgreich geändert für Benutzer: ${username}`);
+                res.send("Passwort erfolgreich geändert");
+            });
+        } else {
+            console.log(`Passwort ändern fehlgeschlagen, Passwort falsch für Benutzer ${username}`);
+            res.status(400).send("Falsches Passwort");
+        }
+    });
+});
+
 // user.js
 // Alle Benutzer mit ihren Rollen abrufen
 router.get("/users-with-roles", (req, res) => {

@@ -68,6 +68,13 @@ app.post('/authenticate', (req, res) => {
     userRoutes.login(req, res);
 });
 
+app.get('/change-password', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).sendFile(path.join(__dirname, '../public', '401.html'));
+    }
+    res.sendFile(path.join(__dirname, '../public', 'changePassword.html'));
+});
+
 // Globale Authentifizierungs-Middleware
 app.use((req, res, next) => {
     if (!req.session.user && req.url !== '/' && req.url !== '/login' && req.url !== '/authenticate') {
