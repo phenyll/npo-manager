@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Benutzer erstellen</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css">
+    <link href="/static/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 <div class="container">
@@ -41,7 +41,7 @@
 
             if (response.ok) {
                 alert('Benutzer erfolgreich erstellt!');
-                window.location.href = '/'; // Weiterleitung zur Hauptseite
+                window.location.href = '/user-list'; // Weiterleitung zur Hauptseite
             } else {
                 alert('Fehler beim Erstellen des Benutzers.');
             }
@@ -51,6 +51,6 @@
         }
     });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/bootstrap.bundle.min.js"></script>
 </body>
 </html>

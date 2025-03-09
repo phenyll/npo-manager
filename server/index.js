@@ -36,7 +36,7 @@ app.get('/login', (req, res) => {
 app.get('/create-user', (req, res) => {
     // wenn BenutzerID nicht 1 (admin) ist, dann zeige nur eine Fehlermeldung
     if (!req.session.rights.includes('create-user')) {
-        res.status(403).send('Nicht autorisiert');
+        res.status(403).sendFile(path.join(__dirname, '../public', '403.html'));
         return;
     }
 
@@ -44,16 +44,16 @@ app.get('/create-user', (req, res) => {
 });
 
 app.get('/user-list', (req, res) => {
-    if (!req.session.rights.includes('list-user')) {
-        res.status(403).send('xxx Nicht autorisiert');
+    if (!req.session?.rights?.includes('list-user')) {
+        res.status(403).sendFile(path.join(__dirname, '../public', '403.html'));
     } else {
         res.sendFile(path.join(__dirname, '../public', 'userList.html'));
     }
 });
 
 app.get('/edit-user-permissions', (req, res) => {
-    if (req.session.user !== 1) {
-        res.status(403).send('Nicht autorisiert');
+    if (!req.session?.rights?.includes('edit-user')) {
+        res.status(403).sendFile(path.join(__dirname, '../public', '403.html'));
         return;
     }
     res.sendFile(path.join(__dirname, '../public', 'editUserPermissions.html'));
