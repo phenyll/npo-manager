@@ -40,8 +40,10 @@ router.post("/users", (req, res) => {
                 console.error("SQL-Fehler beim Erstellen des Benutzers:", err.message);
                 res.status(500).send(err.message);
             } else {
-                console.log(`Benutzer ${username} erfolgreich erstellt mit ID ${this.lastID}`);
-                res.status(201).send(`Benutzer ${username} erfolgreich erstellt`);
+                db.run("INSERT INTO user_roles (user_id, role_id) VALUES (?, 3)", [this.lastID], function (err) {
+                    console.log(`Benutzer ${username} erfolgreich erstellt mit ID ${this.lastID}`);
+                    res.status(201).send(`Benutzer ${username} erfolgreich erstellt`);
+                });
             }
         })
     }
@@ -123,7 +125,7 @@ router.put("/users/:id/role", (req, res) => {
     const { role } = req.body;
 
     // Überprüfe, ob die Rolle gültig ist
-    const validRoles = ['admin', 'editor'];
+    const validRoles = ['admin', 'editor', 'none'];
     if (!validRoles.includes(role)) {
         return res.status(400).send("Ungültige Rolle");
     }

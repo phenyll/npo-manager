@@ -34,7 +34,6 @@ app.get('/login', (req, res) => {
 
 // Registrierungsseite
 app.get('/create-user', (req, res) => {
-    // wenn BenutzerID nicht 1 (admin) ist, dann zeige nur eine Fehlermeldung
     if (!req.session.rights.includes('create-user')) {
         res.status(403).sendFile(path.join(__dirname, '../public', '403.html'));
         return;
