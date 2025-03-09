@@ -51,9 +51,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 description TEXT
             )
         `);
-        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (1, 'admin', 'Administrator');`);
-        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (2, 'editor', 'Verwalter');`);
-        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (3, 'none', 'Keine bestimmte Rolle');`);
         db.run(`
             CREATE TABLE IF NOT EXISTS permissions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,11 +58,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 description TEXT
             )
         `);
-        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (1, 'login', 'Darf sich einloggen');`);
-        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (2, 'create-user', 'Andere Benutzer erstellen');`);
-        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (3, 'list-user', 'Andere Benutzer auflisten');`);
-        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (4, 'delete-user', 'Andere Benutzer löschen');`);
-        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (5, 'edit-user', 'Andere Benutzer ändern');`);
         db.run(`
             CREATE TABLE IF NOT EXISTS user_roles (
                 user_id INTEGER NOT NULL,
@@ -84,6 +76,28 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 PRIMARY KEY (role_id, permission_id)
             )
         `);
+        // Standardrollen und -berechtigungen
+        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (1, 'admin', 'Administrator');`);
+        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (2, 'editor', 'Verwalter');`);
+        db.run(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (3, 'none', 'Keine bestimmte Rolle');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (1, 'login', 'Darf sich einloggen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (2, 'create-user', 'Andere Benutzer erstellen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (3, 'list-user', 'Andere Benutzer auflisten');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (4, 'delete-user', 'Andere Benutzer löschen');`);
+        db.run(`INSERT OR IGNORE INTO permissions (id, name, description) VALUES (5, 'edit-user', 'Andere Benutzer ändern');`);
+
+        // Standardbenutzer anlegen, wenn dieser nicht existiert
+        db.get(`SELECT * FROM users WHERE id = 1`, (err, row) => {
+            if (err) {
+                console.error('Fehler beim Abfragen des Admins:', err.message);
+            } else if (row) {
+                console.log('Admin existiert bereits');
+            } else {
+                console.log('Admin wird erstellt');
+                db.run(`INSERT OR IGNORE INTO users (id, username, salt, hash) VALUES (1, 'admin', '81dc4eb6a1928d496298430039c84bf8', '75e4dc687ed0f5b6d26c57b45fd7a0931e9c0a5ba8a079bd91edbb0efd22f96d');`);
+            }
+        })
+
         // Admin darf alles
         db.run(`INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (1, 1);`); // Erster Nutzer ist Admin
         db.run(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (1, 1);`); //einloggen
