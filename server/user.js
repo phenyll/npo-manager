@@ -67,15 +67,16 @@ router.delete("/users/:id", (req, res) => {
         return;
     }
     const { id } = req.params;
+    console.log("gelöscht wird: '"+id+"'");
 
     // niemand darf sich selbst löschen
-    if (id === req.session.user) {
+    if (id == req.session.user) {
         res.status(403).send('Nicht autorisiert');
         return;
     }
 
     // niemand darf den Admin löschen
-    if (id === 1) {
+    if (id == 1) {
         res.status(403).send('Nicht autorisiert');
         return
     }
@@ -169,6 +170,24 @@ router.put("/users/:id/role", (req, res) => {
     }
     const { id } = req.params;
     const { role } = req.body;
+
+    // Überprüfe, ob der Benutzer existiert
+    db.get("SELECT * FROM users WHERE id = ?", [id], (err, row) => {
+        if (err) {
+            res.status(500).send(err.message);
+            return;
+        }
+
+        if (!row) {
+            return res.status(404).send("Benutzer nicht gefunden");
+        }
+    });
+
+    // Die Rolle vom Admin darf nicht geändert werden
+    if (id == 1) {
+        console.log('Admin-Rolle darf nicht geändert werden');
+        return res.status(403).send("Nicht autorisiert");
+    }
 
     // Überprüfe, ob die Rolle gültig ist
     const validRoles = ['admin', 'editor', 'none'];
