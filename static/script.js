@@ -296,6 +296,7 @@ document.getElementById("memberForm").addEventListener("submit", (e) => {
       amount: document.getElementById("paymentAmount").value,
       status: document.getElementById("paymentStatus").value,
       paymentMethod: document.getElementById("paymentMethod").value,
+      paymentDate: document.getElementById("paymentDate").value,
     };
   
     fetch(`/payments/${id}`, {

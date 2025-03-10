@@ -5,6 +5,7 @@ const db = require('./db');
 const xlsx = require('xlsx');
 const path = require('path');
 const fs = require('fs');
+const util = require('./utils');
 
 router.get("/stats", (req, res) => {
     const currentYear = new Date().getFullYear();
@@ -143,11 +144,11 @@ router.get("/:id", (req, res) => {
 });
 
 router.put("/:id", (req, res) => {
-    const { year, amount, status, paymentMethod } = req.body;
+    const { year, amount, status, paymentMethod, paymentDate } = req.body;
 
     db.run(
-        "UPDATE payments SET year = ?, amount = ?, status = ?, paymentMethod = ? WHERE id = ?",
-        [year, amount, status, paymentMethod, req.params.id],
+        "UPDATE payments SET year = ?, amount = ?, status = ?, paymentMethod = ?, paymentDate = ? WHERE id = ?",
+        [year, amount, status, paymentMethod, util.parseDate(paymentDate), req.params.id],
         function (err) {
             if (err) {
                 res.status(500).send(err.message);
@@ -161,11 +162,7 @@ router.put("/:id", (req, res) => {
 router.put("/:id/pay", (req, res) => {
     const { id } = req.params;
     const { paymentDate, paymentMethod } = req.body;
-    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(paymentDate)
-        ? paymentDate
-        : /^\d{2}\.\d{2}\.\d{4}$/.test(paymentDate)
-            ? paymentDate.split('.').reverse().join('-')
-            : null;
+    const parsedDate = util.parseDate(paymentDate);
     const amount = req.body.amount;
 
     if (!parsedDate) {
