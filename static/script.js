@@ -436,7 +436,7 @@ function formatDateForServer(dateString) {
 }
 
 document.getElementById("exportOpenPaymentsButton").addEventListener("click", () => {
-    fetch("/export-open-payments")
+    fetch("/payments/export-open-payments")
       .then((response) => response.blob())
       .then((blob) => {
         const url = window.URL.createObjectURL(blob);
