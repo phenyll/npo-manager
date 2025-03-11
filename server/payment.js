@@ -65,41 +65,6 @@ router.get("/stats", (req, res) => {
     });
 });
 
-router.get("/", (req, res) => {
-    const { memberId } = req.query;
-    let sql = "SELECT * FROM payments";
-    const params = [];
-
-    if (memberId) {
-        sql += " WHERE memberId = ?";
-        params.push(memberId);
-    }
-
-    db.all(sql, params, (err, rows) => {
-        if (err) {
-            res.status(500).send(err.message);
-        } else {
-            res.json({ payments: rows });
-        }
-    });
-});
-
-router.post("/", (req, res) => {
-    const { memberId, year, amount, status, paymentMethod, paymentDate} = req.body;
-
-    db.run(
-        "INSERT INTO payments (memberId, year, amount, status, paymentMethod, paymentDate) VALUES (?, ?, ?, ?, ?, ?)",
-        [memberId, year, amount, status, paymentMethod || "Bank", paymentDate || null],
-        function (err) {
-            if (err) {
-                res.status(500).send(err.message);
-            } else {
-                res.status(201).json({ id: this.lastID });
-            }
-        }
-    );
-});
-
 router.post("/create-bulk", (req, res) => {
     const { year, amount } = req.body;
 
@@ -127,6 +92,37 @@ router.post("/create-bulk", (req, res) => {
                 stmt.finalize(() => {
                     res.status(201).send("Beitragsforderungen erfolgreich erstellt!");
                 });
+            });
+        }
+    );
+});
+
+router.get("/export-open-payments", (req, res) => {
+    db.all(
+        `SELECT members.id, members.firstName, members.lastName, members.childName, members.email, 
+                    payments.year, payments.amount, payments.status
+         FROM payments
+                  JOIN members ON payments.memberId = members.id
+         WHERE payments.status = 'offen'`,
+        [],
+        (err, rows) => {
+            if (err) {
+                console.error("Fehler beim Exportieren der offenen Beiträge:", err.message);
+                return res.status(500).send(err.message);
+            }
+
+            const workbook = xlsx.utils.book_new();
+            const worksheet = xlsx.utils.json_to_sheet(rows);
+            xlsx.utils.book_append_sheet(workbook, worksheet, "Offene Beiträge");
+
+            const filePath = path.join(__dirname, "../uploads", "offene_beitraege.xlsx");
+            xlsx.writeFile(workbook, filePath);
+
+            res.download(filePath, "offene_beitraege.xlsx", (err) => {
+                if (err) {
+                    console.error("Fehler beim Herunterladen der Datei:", err.message);
+                }
+                fs.unlinkSync(filePath); // Temporäre Datei löschen
             });
         }
     );
@@ -182,31 +178,37 @@ router.put("/:id/pay", (req, res) => {
     );
 });
 
-router.get("/export-open-payments", (req, res) => {
-    db.all(
-        `SELECT members.id, members.firstName, members.lastName, payments.year, payments.amount, payments.status
-         FROM payments
-                  JOIN members ON payments.memberId = members.id
-         WHERE payments.status = 'offen'`,
-        [],
-        (err, rows) => {
+router.get("/", (req, res) => {
+    const { memberId } = req.query;
+    let sql = "SELECT * FROM payments";
+    const params = [];
+
+    if (memberId) {
+        sql += " WHERE memberId = ?";
+        params.push(memberId);
+    }
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            res.status(500).send(err.message);
+        } else {
+            res.json({ payments: rows });
+        }
+    });
+});
+
+router.post("/", (req, res) => {
+    const { memberId, year, amount, status, paymentMethod, paymentDate} = req.body;
+
+    db.run(
+        "INSERT INTO payments (memberId, year, amount, status, paymentMethod, paymentDate) VALUES (?, ?, ?, ?, ?, ?)",
+        [memberId, year, amount, status, paymentMethod || "Bank", paymentDate || null],
+        function (err) {
             if (err) {
-                return res.status(500).send(err.message);
+                res.status(500).send(err.message);
+            } else {
+                res.status(201).json({ id: this.lastID });
             }
-
-            const workbook = xlsx.utils.book_new();
-            const worksheet = xlsx.utils.json_to_sheet(rows);
-            xlsx.utils.book_append_sheet(workbook, worksheet, "Offene Beiträge");
-
-            const filePath = path.join(__dirname, "../uploads", "offene_beitraege.xlsx");
-            xlsx.writeFile(workbook, filePath);
-
-            res.download(filePath, "offene_beitraege.xlsx", (err) => {
-                if (err) {
-                    console.error("Fehler beim Herunterladen der Datei:", err.message);
-                }
-                fs.unlinkSync(filePath); // Temporäre Datei löschen
-            });
         }
     );
 });
