@@ -236,37 +236,50 @@ async function addNewPayment(ref){
 }
 
 function setClipboardErinnerungsmailContent(nameDesKindes, jahr){
-    const mailContent = `Liebe Mitglieder des Schulfördervereins,
+    const mailContent = `<p>Liebe Mitglieder des Schulfördervereins,</p>
 
-wir hoffen, dass es Ihnen gut geht und Sie das vergangene Jahr gut überstanden haben. Wir möchten Sie daran erinnern, dass der jährliche Mitgliedsbeitrag in Höhe von nur 12 Euro fällig ist. Mit Ihrem Beitrag unterstützen Sie unsere Schule und tragen dazu bei, dass wir weiterhin wertvolle Projekte und Aktivitäten für unsere Schülerinnen und Schüler anbieten können.
+<p>wir hoffen, dass es Ihnen gut geht und Sie das vergangene Jahr gut überstanden haben. Wir möchten Sie daran erinnern, dass der <strong>jährliche Mitgliedsbeitrag in Höhe von nur 12 Euro</strong> fällig ist. Mit Ihrem Beitrag unterstützen Sie unsere Schule und tragen dazu bei, dass wir weiterhin wertvolle Projekte und Aktivitäten für unsere Schülerinnen und Schüler anbieten können.</p>
 
-Um Ihnen die Zahlung so einfach wie möglich zu machen, haben wir folgende Optionen für Sie vorbereitet:
+<p>Um Ihnen die Zahlung so einfach wie möglich zu machen, haben wir folgende Optionen für Sie vorbereitet:</p>
 
-Überweisung: Bitte überweisen Sie den Betrag von 12 Euro auf folgendes Konto:
+<ol>
+  <li><strong>Überweisung:</strong> Bitte überweisen Sie den Betrag von 12 Euro auf folgendes Konto:<br>
+  Kontoinhaber: ${organizationDetails?.name}<br>
+  IBAN: ${organizationDetails?.bankDetails.iban}<br>
+  BIC: ${organizationDetails?.bankDetails.bic}<br>
+  Verwendungszweck: Mitgliedsbeitrag ${nameDesKindes} ${jahr}</li>
 
-Kontoinhaber: ${organizationDetails?.name}
-IBAN: ${organizationDetails?.bankDetails.iban}
-BIC: ${organizationDetails?.bankDetails.bic}
-Verwendungszweck: Mitgliedsbeitrag ${nameDesKindes} ${jahr}
+  <li><strong>Dauerauftrag:</strong> Richten Sie einen Dauerauftrag ein, um den Beitrag jährlich automatisch zu überweisen. So müssen Sie sich keine Gedanken mehr über die Zahlung machen.</li>
 
-Dauerauftrag: Richten Sie einen Dauerauftrag ein, um den Beitrag jährlich automatisch zu überweisen. So müssen Sie sich keine Gedanken mehr über die Zahlung machen.
+  <li><strong>Barzahlung:</strong> Sie können den Betrag auch bar im Sekretariat der Schule entrichten. Bitte geben Sie den Betrag in einem Umschlag mit Ihrem Namen und dem Verwendungszweck "Mitgliedsbeitrag ${jahr}" ab.</li>
+</ol>
 
-Barzahlung: Sie können den Beitrag auch bar im Sekretariat der Schule entrichten. Bitte geben Sie den Betrag in einem Umschlag mit Ihrem Namen und dem Verwendungszweck "Mitgliedsbeitrag ${jahr}" ab.
+<p>Wir danken Ihnen herzlich für Ihre Unterstützung und Ihr Engagement. Bei Fragen oder Anliegen stehen wir Ihnen gerne zur Verfügung.</p>
 
-Wir danken Ihnen herzlich für Ihre Unterstützung und Ihr Engagement. Bei Fragen oder Anliegen stehen wir Ihnen gerne zur Verfügung.
+<p>Mit freundlichen Grüßen,</p>
 
-Mit freundlichen Grüßen,
+<p>${organizationDetails?.nameKassenwart}<br>
+Kassenwart<br>
+${organizationDetails?.name}<br>
+${organizationDetails?.address}</p>`;
+    // Für HTML-Text in die Zwischenablage
+    const clipboardItem = new ClipboardItem({
+        'text/plain': new Blob([mailContent.replace(/<[^>]*>/g, '')], {type: 'text/plain'}),
+        'text/html': new Blob([mailContent], {type: 'text/html'})
+    });
 
-${organizationDetails?.nameKassenwart}
-Kassenwart
-${organizationDetails?.name}
-${organizationDetails?.address}`
-    navigator.clipboard.writeText(mailContent).then(() => {
-
+    navigator.clipboard.write([clipboardItem]).then(() => {
+        console.log('HTML-formatierter Text in die Zwischenablage kopiert');
+    }).catch(err => {
+        console.error('Fehler beim Kopieren in die Zwischenablage:', err);
+        // Fallback zur alten Methode
+        navigator.clipboard.writeText(mailContent.replace(/<[^>]*>/g, '')).then(() => {
+            console.log('Einfacher Text in die Zwischenablage kopiert (Fallback)');
         }).catch(err => {
             console.error('Fehler beim Kopieren in die Zwischenablage:', err);
             alert("Fehler beim Kopieren in die Zwischenablage. Bitte versuchen Sie es erneut.");
         });
+    });
 }
 
 document.getElementById("memberForm").addEventListener("submit", (e) => {
