@@ -67,10 +67,13 @@ router.get("/stats", (req, res) => {
 
 router.post("/create-bulk", (req, res) => {
     const { year, amount } = req.body;
+    const currentDate = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD format
 
     db.all(
-        "SELECT id FROM members WHERE id NOT IN (SELECT memberId FROM payments WHERE year = ?)",
-        [year],
+        `SELECT id FROM members 
+         WHERE id NOT IN (SELECT memberId FROM payments WHERE year = ?)
+         AND (actualExit IS NULL OR actualExit > ?)`,
+        [year, currentDate],
         (err, rows) => {
             if (err) {
                 return res.status(500).send(err.message);
@@ -90,7 +93,7 @@ router.post("/create-bulk", (req, res) => {
                 });
 
                 stmt.finalize(() => {
-                    res.status(201).send("Beitragsforderungen erfolgreich erstellt!");
+                    res.status(201).send(`${rows.length} Beitragsforderungen erfolgreich erstellt!`);
                 });
             });
         }
