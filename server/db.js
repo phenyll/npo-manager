@@ -108,6 +108,24 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     )
                 `);
 
+                await runAsync(`
+                    CREATE TABLE IF NOT EXISTS organization_details (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        name TEXT NOT NULL,
+                        address TEXT,
+                        email TEXT,
+                        phone TEXT,
+                        website TEXT,
+                        account_name TEXT,
+                        iban TEXT,
+                        bic TEXT,
+                        bank_name TEXT,
+                        tax_id TEXT,
+                        registration_number TEXT,
+                        name_kassenwart TEXT
+                    )
+                `);
+
                 // Standardrollen und -berechtigungen
                 await runAsync(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (1, 'admin', 'Administrator');`);
                 await runAsync(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (2, 'editor', 'Verwalter');`);
@@ -137,6 +155,30 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 // Editor darf nur Benutzer auflisten
                 await runAsync(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (2, 1);`); //einloggen
                 await runAsync(`INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (2, 3);`); //Benutzer auflisten
+
+                // Check if organization details exist, if not insert default values
+                const orgDetails = await getAsync(`SELECT * FROM organization_details WHERE id = 1`);
+                    if (!orgDetails) {
+                        console.log('Organization details werden erstellt');
+                        await runAsync(`
+                            INSERT INTO organization_details (id, name, address, email, phone, website,
+                                                              account_name, iban, bic, bank_name,
+                                                              tax_id, registration_number, name_kassenwart)
+                            VALUES (1,
+                                    'Mein toller Demo-Förderverein e.V.',
+                                    '00000 Super-Ort',
+                                    'toller-verein@grundschule-super-ort.de',
+                                    '012345/12345678',
+                                    'www.grundschule-super-ort.de',
+                                    'Schulförderverein',
+                                    'DE00 0000 0000 0000 0000 99',
+                                    'ABCDEFH9JXX',
+                                    'Sparkasse Super-Ort',
+                                    '',
+                                    'VR 999009',
+                                    'Bart Kasenwart')
+                        `);
+                    }
 
                 console.log('Datenbank initialisiert.');
 

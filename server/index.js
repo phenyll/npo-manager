@@ -9,6 +9,7 @@ const db = require('./db'); // Datenbankverbindung importieren
 const paymentRoutes = require('./payment');
 const memberRoutes = require('./member');
 const userRoutes = require('./user');
+const organizationRouter = require('./organization');
 const { isAuthenticated, logRequest } = require('./middleware');
 
 const app = express();
@@ -97,6 +98,7 @@ app.use(isAuthenticated);
 // API Endpunkte verwenden
 app.use('/payments', paymentRoutes);
 app.use('/members', memberRoutes.router);
+app.use('/organization', organizationRouter);
 app.use('/', userRoutes.router);
 
 app.use((req, res, next) => {

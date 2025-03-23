@@ -47,6 +47,25 @@ function setUserInfo(){
         });
 }
 
+let organizationDetails = null;
+
+function loadOrganizationDetails() {
+    fetch('/organization/details')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Fehler beim Laden der Vereinsdaten');
+            }
+            return response.json();
+        })
+        .then(data => {
+            organizationDetails = data;
+            console.log('Vereinsdaten geladen');
+        })
+        .catch(error => {
+            console.error('Fehler:', error);
+        });
+}
+
 // Mitglieder laden
 function loadMembers() {
     fetch("/members")
@@ -467,3 +486,4 @@ document.getElementById("exportOpenPaymentsButton").addEventListener("click", ()
 // Initiales Laden der Daten
 loadMembers();
 loadPayments();
+loadOrganizationDetails();
