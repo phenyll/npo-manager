@@ -142,26 +142,38 @@ function loadMembers() {
   
     paymentsTable.innerHTML = data.payments
       .map(
-        (payment) => `
+        (payment) => {
+          const memberFormatter = memberfinder(payment.memberId)
+          return `
         <tr>
           <td>
             <span class="pill">${payment.memberId}</span>
-            ${memberfinder(payment.memberId)(["firstName", "lastName"])}
+            ${memberFormatter(["firstName", "lastName"])}
           </td>
           <td>${payment.year}</td>
           <td>${payment.amount} €</td>
           <td>${payment.status}</td>
           <td>${payment.paymentMethod || "-"}</td>
           <td>
-            <button class="btn btn-info btn-sm" onclick="viewPaymentDetails(${payment.id})"> 📝 </button>
+            <button class="btn btn-info btn-sm" onclick="viewPaymentDetails(${payment.id})" title="Zahlung einsehen oder ändern"> 📝 </button>
             ${
               payment.status === "offen"
-                ? `<button class="btn btn-success btn-sm" onclick="markAsPaid(${payment.id})"> ✅ </button>
+                ? `<button class="btn btn-success btn-sm" onclick="markAsPaid(${payment.id})" title="Beitrag als bezahlt markieren"> ✅ </button>
                    <button class="btn btn-danger btn-sm" onclick="deletePayment(${payment.id})" title="Beitrag löschen"> 🚮 </button>`
                   : `<span class="text-success">Bezahlt am ${formatDate(payment.paymentDate) || "unbekannt"}</span>`
             }
+            ${
+              payment.status === "offen" && memberFormatter(["email"])
+                ? `<a href="mailto:${
+                  memberFormatter(["email"])
+                  }?subject=${
+                    encodeURIComponent(`Erinnerung an die Zahlung des jährlichen Mitgliedsbeitrags für ${payment.year}`)
+                  }" class="btn btn-info btn-sm" title="Erinnerungsmail verfassen" onclick="setClipboardErinnerungsmailContent('${memberFormatter(["childName"])}', '${payment.year}')"> 🕵🏻‍♂️ </a>`
+                : ""
+            }
           </td>
         </tr>`
+        }
       )
       .join("");
   }
@@ -221,6 +233,40 @@ async function addNewPayment(ref){
       console.error("Fehler:", error);
       alert("Fehler beim Hinzufügen des Beitrags.");
     }
+}
+
+function setClipboardErinnerungsmailContent(nameDesKindes, jahr){
+    const mailContent = `Liebe Mitglieder des Schulfördervereins,
+
+wir hoffen, dass es Ihnen gut geht und Sie das vergangene Jahr gut überstanden haben. Wir möchten Sie daran erinnern, dass der jährliche Mitgliedsbeitrag in Höhe von nur 12 Euro fällig ist. Mit Ihrem Beitrag unterstützen Sie unsere Schule und tragen dazu bei, dass wir weiterhin wertvolle Projekte und Aktivitäten für unsere Schülerinnen und Schüler anbieten können.
+
+Um Ihnen die Zahlung so einfach wie möglich zu machen, haben wir folgende Optionen für Sie vorbereitet:
+
+Überweisung: Bitte überweisen Sie den Betrag von 12 Euro auf folgendes Konto:
+
+Kontoinhaber: ${organizationDetails?.name}
+IBAN: ${organizationDetails?.bankDetails.iban}
+BIC: ${organizationDetails?.bankDetails.bic}
+Verwendungszweck: Mitgliedsbeitrag ${nameDesKindes} ${jahr}
+
+Dauerauftrag: Richten Sie einen Dauerauftrag ein, um den Beitrag jährlich automatisch zu überweisen. So müssen Sie sich keine Gedanken mehr über die Zahlung machen.
+
+Barzahlung: Sie können den Beitrag auch bar im Sekretariat der Schule entrichten. Bitte geben Sie den Betrag in einem Umschlag mit Ihrem Namen und dem Verwendungszweck "Mitgliedsbeitrag ${jahr}" ab.
+
+Wir danken Ihnen herzlich für Ihre Unterstützung und Ihr Engagement. Bei Fragen oder Anliegen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen,
+
+${organizationDetails?.nameKassenwart}
+Kassenwart
+${organizationDetails?.name}
+${organizationDetails?.address}`
+    navigator.clipboard.writeText(mailContent).then(() => {
+
+        }).catch(err => {
+            console.error('Fehler beim Kopieren in die Zwischenablage:', err);
+            alert("Fehler beim Kopieren in die Zwischenablage. Bitte versuchen Sie es erneut.");
+        });
 }
 
 document.getElementById("memberForm").addEventListener("submit", (e) => {
