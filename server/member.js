@@ -139,6 +139,35 @@ router.put("/:id", (req, res) => {
   );
 });
 
+// Add to the member.js file
+router.put("/:id/exit", (req, res) => {
+    const { id } = req.params;
+    const { exitDate } = req.body;
+
+    if (!exitDate) {
+        return res.status(400).send("Austrittsdatum erforderlich");
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(exitDate)) {
+        return res.status(400).send("Ungültiges Datumsformat. Bitte YYYY-MM-DD verwenden.");
+    }
+
+    db.run(
+        "UPDATE members SET actualExit = ? WHERE id = ?",
+        [exitDate, id],
+        function (err) {
+            if (err) {
+                res.status(500).send(err.message);
+            } else if (this.changes > 0) {
+                res.json({ message: "Austrittsdatum erfolgreich erfasst", id });
+            } else {
+                res.status(404).send(`Mitglied mit ID ${id} nicht gefunden`);
+            }
+        }
+    );
+});
+
 router.post("/import-members", upload.single("file"), (req, res) => {
   const file = req.file;
   if (!file) {

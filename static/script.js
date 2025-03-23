@@ -88,13 +88,14 @@ function loadMembers() {
             (member.enrollmentYear && member.enrollmentYear.toString().includes(searchQuery)) ||
             (member.joinDate && member.joinDate.toLowerCase().includes(searchQuery)) ||
             (member.expectedExitDate && member.expectedExitDate.toLowerCase().includes(searchQuery)) ||
-            (member.autoExit && member.autoExit.toLowerCase().includes(searchQuery))
+            (member.autoExit && member.autoExit.toLowerCase().includes(searchQuery)) ||
+            (member.actualExit && member.actualExit.toLowerCase().includes(searchQuery))
           );
         });
         membersTable.innerHTML = filteredMembers
           .map(
             (member) => `
-            <tr>
+            <tr style="background-color: ${member.actualExit ? "#f8d7da" : ""}">
               <td>${member.id}</td>
               <td>${member.firstName}</td>
               <td>${member.lastName}</td>
@@ -103,12 +104,14 @@ function loadMembers() {
               <td>${member.enrollmentYear || "-"}</td>
               <td>${formatDate(member.joinDate) || "-"}</td>
               <td>${formatDate(member.expectedExitDate) || "-"}</td>
-              <td>${formatDate(member.autoExit) || "-"}</td>
+              <td>${formatDate(member.actualExit) || "-"}</td>
               <td>
                 <div style="white-space: nowrap">
                     <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})" title="Mitgliedsdaten bearbeiten">📝</button>
                     <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})" title="Zahlungen vom Mitglied verwalten">💶</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteMember(${member.id})" title="Mitglied löschen">🚮</button>
+                    ${ member.actualExit?"🏁":`
+                        <button class="btn btn-warning btn-sm" onclick="recordMemberExit(${member.id})" title="Austritt erfassen">🚪</button>
+                        ` }
                 </div>
               </td>
             </tr>`
@@ -297,6 +300,7 @@ document.getElementById("memberForm").addEventListener("submit", (e) => {
       joinDate: document.getElementById("joinDate").value,
       expectedExitDate: document.getElementById("expectedExitDate").value,
       autoExit: document.getElementById("autoExit").value,
+      actualExit: document.getElementById("actualExit").value,
     };
   
     fetch(`/members/${id}`, {
@@ -459,6 +463,31 @@ function deletePayment(id) {
     }
 }
 
+function recordMemberExit(id) {
+    const member = window.members.find(m => m.id === id);
+    if (!member) return;
+
+    const defaultDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const exitDate = prompt(`Austrittsdatum für ${member.firstName} ${member.lastName}:`, defaultDate);
+
+    if (exitDate) {
+        fetch(`/members/${id}/exit`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ exitDate }),
+        })
+            .then((response) => {
+                if (response.ok) {
+                    alert("Austritt erfolgreich erfasst!");
+                    loadMembers(); // Refresh the members list
+                } else {
+                    response.text().then((text) => alert(`Fehler: ${text}`));
+                }
+            })
+            .catch((error) => console.error("Fehler:", error));
+    }
+}
+
 // Excel-Datei importieren
 document.getElementById("importForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -499,6 +528,7 @@ function viewMemberDetails(id) {
         document.getElementById("joinDate").value = data.joinDate || "";
         document.getElementById("expectedExitDate").value = data.expectedExitDate || "";
         document.getElementById("autoExit").value = data.autoExit || "";
+        document.getElementById("actualExit").value = data.actualExit || "";
   
         // Detailansicht anzeigen
         document.getElementById("memberDetails").classList.remove("d-none");
