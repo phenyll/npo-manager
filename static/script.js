@@ -134,10 +134,11 @@ function loadMembers() {
           <td>${payment.status}</td>
           <td>${payment.paymentMethod || "-"}</td>
           <td>
-            <button class="btn btn-info btn-sm" onclick="viewPaymentDetails(${payment.id})">Bearbeiten</button>
+            <button class="btn btn-info btn-sm" onclick="viewPaymentDetails(${payment.id})"> 📝 </button>
             ${
               payment.status === "offen"
-                ? `<button class="btn btn-success btn-sm" onclick="markAsPaid(${payment.id})">Bezahlt</button>`
+                ? `<button class="btn btn-success btn-sm" onclick="markAsPaid(${payment.id})"> ✅ </button>
+                   <button class="btn btn-danger btn-sm" onclick="deletePayment(${payment.id})" title="Beitrag löschen"> 🚮 </button>`
                   : `<span class="text-success">Bezahlt am ${formatDate(payment.paymentDate) || "unbekannt"}</span>`
             }
           </td>
@@ -363,8 +364,21 @@ function deleteMember(id) {
 }
 
 // Beitrag löschen
-function deletePayment(memberId, year) {
-  alert(`Löschen von Beitrag für Mitglied ${memberId}, Jahr ${year} wird in Zukunft unterstützt.`);
+function deletePayment(id) {
+    if (confirm("Möchten Sie diesen Beitrag wirklich löschen?")) {
+        fetch(`/payments/${id}`, {
+            method: "DELETE",
+        })
+            .then((response) => {
+                if (response.ok) {
+                    alert("Beitrag erfolgreich gelöscht!");
+                    loadPayments(); // Zahlungen neu laden
+                } else {
+                    response.text().then((text) => alert(`Fehler: ${text}`));
+                }
+            })
+            .catch((error) => console.error("Fehler:", error));
+    }
 }
 
 // Excel-Datei importieren

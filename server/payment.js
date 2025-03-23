@@ -155,6 +155,23 @@ router.put("/:id", (req, res) => {
     );
 });
 
+router.delete("/:id", (req, res) => {
+    const { id } = req.params;
+
+    db.run("DELETE FROM payments WHERE id = ?", [id], function(err) {
+        if (err) {
+            console.error("Fehler beim Löschen des Beitrags:", err.message);
+            return res.status(500).send(err.message);
+        }
+
+        if (this.changes === 0) {
+            return res.status(404).send("Beitrag nicht gefunden");
+        }
+
+        res.json({ message: "Beitrag erfolgreich gelöscht", changes: this.changes });
+    });
+});
+
 router.put("/:id/pay", (req, res) => {
     const { id } = req.params;
     const { paymentDate, paymentMethod } = req.body;
