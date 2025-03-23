@@ -171,7 +171,7 @@ function loadMembers() {
                   memberFormatter(["email"])
                   }?subject=${
                     encodeURIComponent(`Erinnerung an die Zahlung des jährlichen Mitgliedsbeitrags für ${payment.year}`)
-                  }" class="btn btn-info btn-sm" title="Erinnerungsmail verfassen" onclick="setClipboardErinnerungsmailContent('${memberFormatter(["childName"])}', '${payment.year}')"> 🕵🏻‍♂️ </a>`
+                  }" class="btn btn-info btn-sm" title="Erinnerungsmail verfassen + Zwischenablage mit Mailvorlage füllen" onclick="setClipboardErinnerungsmailContent('${memberFormatter(["childName"])}', '${payment.year}')"> 🕵🏻‍♂️ </a>`
                 : ""
             }
           </td>
