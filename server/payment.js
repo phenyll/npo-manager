@@ -68,12 +68,14 @@ router.get("/stats", (req, res) => {
 router.post("/create-bulk", (req, res) => {
     const { year, amount } = req.body;
     const currentDate = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD format
+    const currentYearStart = `${year}-01-01`; // First day of the current year
 
     db.all(
         `SELECT id FROM members 
          WHERE id NOT IN (SELECT memberId FROM payments WHERE year = ?)
-         AND (actualExit IS NULL OR actualExit > ?)`,
-        [year, currentDate],
+         AND (actualExit IS NULL OR actualExit > ?)
+         AND (autoExit IS NULL OR autoExit > ?)`,
+        [year, currentDate, currentYearStart],
         (err, rows) => {
             if (err) {
                 return res.status(500).send(err.message);
