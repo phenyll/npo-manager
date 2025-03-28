@@ -61,11 +61,12 @@ router.post("/", (req, res) => {
     joinDate,
     expectedExitDate,
     autoExit,
+    actualExit
   } = req.body;
 
   db.run(
-      `INSERT INTO members (firstName, lastName, city, email, phone, childName, enrollmentYear, joinDate, expectedExitDate, actualExit)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO members (firstName, lastName, city, email, phone, childName, enrollmentYear, joinDate, expectedExitDate, autoExit, actualExit)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         firstName,
         lastName,
@@ -77,6 +78,7 @@ router.post("/", (req, res) => {
         joinDate,
         expectedExitDate,
         autoExit,
+        actualExit
       ],
       function (err) {
         if (err) {
