@@ -156,13 +156,98 @@ router.get("/export-open-payments", (req, res) => {
     );
 });
 
+// New route to get reminder history for a payment
+router.get("/:id/reminders", (req, res) => {
+    const { id } = req.params;
+    db.all(
+        "SELECT * FROM reminder_history WHERE payment_id = ? ORDER BY reminder_date DESC",
+        [id],
+        (err, rows) => {
+            if (err) {
+                console.error("Fehler beim Abrufen der Mahnungshistorie:", err.message);
+                return res.status(500).send(err.message);
+            }
+            res.json({ reminders: rows });
+        }
+    );
+});
+
+// New route to add a reminder for a payment
+router.post("/:id/remind", (req, res) => {
+    const { id } = req.params;
+    const { reminderMethod, reminderNotes } = req.body;
+    const reminderDate = req.body.reminderDate || new Date().toISOString().split('T')[0];
+    const createdBy = req.session?.user?.username || 'System';
+
+    if (!reminderMethod) {
+        return res.status(400).send("Mahnungsart ist erforderlich");
+    }
+
+    db.run(
+        "INSERT INTO reminder_history (payment_id, reminder_date, reminder_method, reminder_notes, created_by) VALUES (?, ?, ?, ?, ?)",
+        [id, reminderDate, reminderMethod, reminderNotes, createdBy],
+        function (err) {
+            if (err) {
+                console.error("Fehler beim Hinzufügen der Mahnung:", err.message);
+                return res.status(500).send(err.message);
+            }
+            res.status(201).json({ id: this.lastID, message: "Mahnung erfolgreich erfasst" });
+        }
+    );
+});
+
+// Get a single payment with its reminders
 router.get("/:id", (req, res) => {
     const { id } = req.params;
-    db.get("SELECT * FROM payments WHERE id = ?", [id], (err, row) => {
+    
+    // Get payment details
+    db.get("SELECT * FROM payments WHERE id = ?", [id], (err, payment) => {
+        if (err) {
+            return res.status(500).send(err.message);
+        }
+        
+        if (!payment) {
+            return res.status(404).send("Beitrag nicht gefunden");
+        }
+        
+        // Get reminder history for this payment
+        db.all(
+            "SELECT * FROM reminder_history WHERE payment_id = ? ORDER BY reminder_date DESC", 
+            [id], 
+            (err, reminders) => {
+                if (err) {
+                    return res.status(500).send(err.message);
+                }
+                
+                // Add reminder history to payment object
+                payment.reminders = reminders || [];
+                res.json(payment);
+            }
+        );
+    });
+});
+
+// List payments with latest reminder info
+router.get("/", (req, res) => {
+    const { memberId } = req.query;
+    let sql = `
+        SELECT p.*, 
+               (SELECT COUNT(*) FROM reminder_history WHERE payment_id = p.id) AS reminder_count,
+               (SELECT MAX(reminder_date) FROM reminder_history WHERE payment_id = p.id) AS last_reminder_date
+        FROM payments p
+    `;
+    const params = [];
+
+    if (memberId) {
+        sql += " WHERE p.memberId = ?";
+        params.push(memberId);
+    }
+
+    db.all(sql, params, (err, rows) => {
         if (err) {
             res.status(500).send(err.message);
         } else {
-            res.json(row);
+            res.json({ payments: rows });
         }
     });
 });

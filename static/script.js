@@ -147,6 +147,13 @@ function loadMembers() {
       .map(
         (payment) => {
           const memberFormatter = memberfinder(payment.memberId)
+          
+          // Reminder information
+          let reminderInfo = '';
+          if (payment.reminder_count > 0) {
+            reminderInfo = `<span class="badge bg-warning text-dark">Gemahnt: ${formatDate(payment.last_reminder_date) || "unbekannt"} (${payment.reminder_count}x)</span>`;
+          }
+          
           return `
         <tr>
           <td>
@@ -155,14 +162,15 @@ function loadMembers() {
           </td>
           <td>${payment.year}</td>
           <td>${payment.amount} €</td>
-          <td>${payment.status}</td>
+          <td>${payment.status} ${reminderInfo}</td>
           <td>${payment.paymentMethod || "-"}</td>
           <td>
             <button class="btn btn-info btn-sm" onclick="viewPaymentDetails(${payment.id})" title="Zahlung einsehen oder ändern"> 📝 </button>
             ${
               payment.status === "offen"
                 ? `<button class="btn btn-success btn-sm" onclick="markAsPaid(${payment.id})" title="Beitrag als bezahlt markieren"> ✅ </button>
-                   <button class="btn btn-danger btn-sm" onclick="deletePayment(${payment.id})" title="Beitrag löschen"> 🚮 </button>`
+                   <button class="btn btn-danger btn-sm" onclick="deletePayment(${payment.id})" title="Beitrag löschen"> 🚮 </button>
+                   <button class="btn btn-warning btn-sm" onclick="addReminder(${payment.id})" title="Mahnung erfassen"> 📨 </button>`
                   : `<span class="text-success">Bezahlt am ${formatDate(payment.paymentDate) || "unbekannt"}</span>`
             }
             ${
@@ -571,7 +579,47 @@ document.getElementById("exportOpenPaymentsButton").addEventListener("click", ()
         a.remove();
       })
       .catch((error) => console.error("Fehler beim Exportieren der offenen Beiträge:", error));
-  });  
+  });
+
+function addReminder(paymentId) {
+    // Get payment details
+    const payment = window.payments.find(p => p.id === paymentId);
+    if (!payment) {
+        alert("Zahlung nicht gefunden");
+        return;
+    }
+
+    // Pre-populate reminder fields with sensible defaults
+    const reminderMethod = "Email";
+    const reminderDate = new Date().toISOString().split('T')[0]; // Today
+    const reminderNotes = "";
+
+    // Send the reminder to the server
+    fetch(`/payments/${paymentId}/remind`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            reminderMethod,
+            reminderDate,
+            reminderNotes
+        }),
+    })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error("Fehler beim Erfassen der Mahnung");
+            }
+        })
+        .then(data => {
+            alert("Mahnung erfolgreich erfasst");
+            loadPayments(); // Reload payments to update UI
+        })
+        .catch(error => {
+            console.error("Fehler:", error);
+            alert(error.message);
+        });
+}
 
 // Initiales Laden der Daten
 loadMembers();

@@ -67,6 +67,20 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         FOREIGN KEY (memberId) REFERENCES members (id)
                     )
                 `);
+                
+                // Add new table for reminder history
+                await runAsync(`
+                    CREATE TABLE IF NOT EXISTS reminder_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        payment_id INTEGER NOT NULL,
+                        reminder_date DATE NOT NULL,
+                        reminder_method TEXT NOT NULL,
+                        reminder_notes TEXT,
+                        created_by TEXT,
+                        FOREIGN KEY (payment_id) REFERENCES payments (id) ON DELETE CASCADE
+                    )
+                `);
+
                 await runAsync(`
                     CREATE TABLE IF NOT EXISTS users (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
