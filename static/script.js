@@ -230,7 +230,8 @@ async function addNewPayment(ref){
         alert("Beitrag erfolgreich hinzugefügt!");
         loadPayments(); // Beiträge neu laden
       } else {
-        alert("Fehler beim Hinzufügen des Beitrags.");
+        const errorText = await response.text();
+        alert(`Fehler: ${errorText}`);
       }
     } catch (error) {
       console.error("Fehler:", error);

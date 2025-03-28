@@ -67,37 +67,60 @@ router.get("/stats", (req, res) => {
 
 router.post("/create-bulk", (req, res) => {
     const { year, amount } = req.body;
-    const currentDate = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD format
+    //const currentDate = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD format
     const currentYearStart = `${year}-01-01`; // First day of the current year
+    const currentYearEnd = `${year}-12-31`; // Last day of the current year
 
+    // First get all eligible members
     db.all(
         `SELECT id FROM members 
-         WHERE id NOT IN (SELECT memberId FROM payments WHERE year = ?)
-         AND (actualExit IS NULL OR actualExit > ?)
-         AND (autoExit IS NULL OR autoExit > ?)`,
-        [year, currentDate, currentYearStart],
-        (err, rows) => {
+         WHERE (actualExit IS NULL OR actualExit >= ?)
+         AND (autoExit IS NULL OR autoExit >= ?)
+         AND (joinDate IS NULL OR joinDate <= ?)`,
+        [currentYearStart, currentYearStart, currentYearEnd],
+        (err, allEligibleMembers) => {
             if (err) {
                 return res.status(500).send(err.message);
             }
 
-            if (rows.length === 0) {
-                return res.status(400).send("Keine neuen Beitragsforderungen zu erstellen.");
+            if (allEligibleMembers.length === 0) {
+                return res.status(400).send("Keine Mitglieder für Beitragsforderungen gefunden.");
             }
 
-            db.serialize(() => {
-                const stmt = db.prepare(
-                    "INSERT INTO payments (memberId, year, amount, status) VALUES (?, ?, ?, ?)"
-                );
+            // Get member IDs that already have payments for this year
+            db.all(
+                `SELECT DISTINCT memberId FROM payments WHERE year = ?`,
+                [year],
+                (err, existingPaymentMembers) => {
+                    if (err) {
+                        return res.status(500).send(err.message);
+                    }
 
-                rows.forEach((row) => {
-                    stmt.run([row.id, year, amount, "offen"]);
-                });
+                    // Create a set of member IDs with existing payments for easy lookup
+                    const membersWithPayments = new Set(existingPaymentMembers.map(row => row.memberId));
+                    
+                    // Filter out members who already have payments for this year
+                    const membersNeedingPayments = allEligibleMembers.filter(member => !membersWithPayments.has(member.id));
 
-                stmt.finalize(() => {
-                    res.status(201).send(`${rows.length} Beitragsforderungen erfolgreich erstellt!`);
-                });
-            });
+                    if (membersNeedingPayments.length === 0) {
+                        return res.status(400).send("Alle in Frage kommenden Mitglieder haben bereits Beitragsforderungen für das Jahr " + year);
+                    }
+
+                    db.serialize(() => {
+                        const stmt = db.prepare(
+                            "INSERT INTO payments (memberId, year, amount, status) VALUES (?, ?, ?, ?)"
+                        );
+
+                        membersNeedingPayments.forEach((member) => {
+                            stmt.run([member.id, year, amount, "offen"]);
+                        });
+
+                        stmt.finalize(() => {
+                            res.status(201).send(`${membersNeedingPayments.length} Beitragsforderungen erfolgreich erstellt!`);
+                        });
+                    });
+                }
+            );
         }
     );
 });
@@ -222,17 +245,34 @@ router.get("/", (req, res) => {
 router.post("/", (req, res) => {
     const { memberId, year, amount, status, paymentMethod, paymentDate} = req.body;
 
-    db.run(
-        "INSERT INTO payments (memberId, year, amount, status, paymentMethod, paymentDate) VALUES (?, ?, ?, ?, ?, ?)",
-        [memberId, year, amount, status, paymentMethod || "Bank", paymentDate || null],
-        function (err) {
+    // Check if this member already has a payment record for this year
+    db.get(
+        "SELECT id FROM payments WHERE memberId = ? AND year = ?",
+        [memberId, year],
+        (err, existingPayment) => {
             if (err) {
-                res.status(500).send(err.message);
-            } else {
-                res.status(201).json({ id: this.lastID });
+                return res.status(500).send(err.message);
             }
+
+            if (existingPayment) {
+                return res.status(400).send(`Es existiert bereits eine Beitragsforderung für das Mitglied mit der ID ${memberId} für das Jahr ${year}`);
+            }
+
+            // If no existing payment, create a new one
+            db.run(
+                "INSERT INTO payments (memberId, year, amount, status, paymentMethod, paymentDate) VALUES (?, ?, ?, ?, ?, ?)",
+                [memberId, year, amount, status, paymentMethod || "Bank", paymentDate || null],
+                function (err) {
+                    if (err) {
+                        res.status(500).send(err.message);
+                    } else {
+                        res.status(201).json({ id: this.lastID });
+                    }
+                }
+            );
         }
     );
 });
 
 module.exports = router;
+
