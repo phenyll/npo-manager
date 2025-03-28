@@ -129,64 +129,86 @@ function loadMembers() {
   }
   
   //Beiträge laden
-  async function loadPayments() {
-    const response = await fetch("/payments");
-    const data = await response.json();
-    window.payments = data.payments;
+  function loadPayments(preserveFilter = true) {
+      const currentFilter = preserveFilter ? paymentSearchInput.value : '';
 
-    const memberResponse = await fetch("/members");
-    const members = await memberResponse.json();
-    const memberfinder = (id) => {
-        const m = members.members.find((m) => m.id === id);
-        return function memberFormatter (fields){
-            return fields.map((field) => m[field] || "-").join(" ");
-        }
-    }
-  
-    paymentsTable.innerHTML = data.payments
-      .map(
-        (payment) => {
-          const memberFormatter = memberfinder(payment.memberId)
-          
-          // Reminder information
-          let reminderInfo = '';
-          if (payment.reminder_count > 0) {
-            reminderInfo = `<span class="badge bg-warning text-dark">Gemahnt: ${formatDate(payment.last_reminder_date) || "unbekannt"} (${payment.reminder_count}x)</span>`;
-          }
-          
-          return `
-        <tr>
-          <td>
-            <span class="pill">${payment.memberId}</span>
-            ${memberFormatter(["firstName", "lastName"])}
-          </td>
-          <td>${payment.year}</td>
-          <td>${payment.amount} €</td>
-          <td>${payment.status} ${reminderInfo}</td>
-          <td>${payment.paymentMethod || "-"}</td>
-          <td>
-            <button class="btn btn-info btn-sm" onclick="viewPaymentDetails(${payment.id})" title="Zahlung einsehen oder ändern"> 📝 </button>
-            ${
-              payment.status === "offen"
-                ? `<button class="btn btn-success btn-sm" onclick="markAsPaid(${payment.id})" title="Beitrag als bezahlt markieren"> ✅ </button>
-                   <button class="btn btn-danger btn-sm" onclick="deletePayment(${payment.id})" title="Beitrag löschen"> 🚮 </button>
-                   <button class="btn btn-warning btn-sm" onclick="addReminder(${payment.id})" title="Mahnung erfassen"> 📨 </button>`
-                  : `<span class="text-success">Bezahlt am ${formatDate(payment.paymentDate) || "unbekannt"}</span>`
-            }
-            ${
-              payment.status === "offen" && memberFormatter(["email"])
-                ? `<a href="mailto:${
-                  memberFormatter(["email"])
-                  }?subject=${
-                    encodeURIComponent(`Erinnerung an die Zahlung des jährlichen Mitgliedsbeitrags für ${payment.year}`)
-                  }" class="btn btn-info btn-sm" title="Erinnerungsmail verfassen + Zwischenablage mit Mailvorlage füllen" onclick="setClipboardErinnerungsmailContent('${memberFormatter(["childName"])}', '${payment.year}')"> 🕵🏻‍♂️ </a>`
-                : ""
-            }
-          </td>
-        </tr>`
-        }
-      )
-      .join("");
+      return fetch("/payments")
+          .then((response) => {
+              if (response.status === 401) {
+                  window.location.href = "/login";
+                  return;
+              }
+              return response.json();
+          })
+          .then((data) => {
+              window.payments = data.payments;
+
+              return fetch("/members")
+                  .then(response => response.json())
+                  .then(memberData => {
+                      const members = memberData.members;
+                      const memberfinder = (id) => {
+                          const m = members.find((m) => m.id === id);
+                          return function memberFormatter(fields) {
+                              return fields.map((field) => m[field] || "-").join(" ");
+                          }
+                      }
+
+                      paymentsTable.innerHTML = data.payments
+                          .map(
+                              (payment) => {
+                                  const memberFormatter = memberfinder(payment.memberId)
+
+                                  // Reminder information
+                                  let reminderInfo = '';
+                                  if (payment.reminder_count > 0) {
+                                      reminderInfo = `<span class="badge bg-warning text-dark">Gemahnt: ${formatDate(payment.last_reminder_date) || "unbekannt"} (${payment.reminder_count}x)</span>`;
+                                  }
+
+                                  return `
+              <tr>
+                <td>
+                  <span class="pill">${payment.memberId}</span>
+                  ${memberFormatter(["firstName", "lastName"])}
+                </td>
+                <td>${payment.year}</td>
+                <td>${payment.amount} €</td>
+                <td>${payment.status} ${reminderInfo}</td>
+                <td>${payment.paymentMethod || "-"}</td>
+                <td>
+                  <button class="btn btn-info btn-sm" onclick="viewPaymentDetails(${payment.id})" title="Zahlung einsehen oder ändern"> 📝 </button>
+                  ${
+                                      payment.status === "offen"
+                                          ? `<button class="btn btn-success btn-sm" onclick="markAsPaid(${payment.id})" title="Beitrag als bezahlt markieren"> ✅ </button>
+                         <button class="btn btn-danger btn-sm" onclick="deletePayment(${payment.id})" title="Beitrag löschen"> 🚮 </button>
+                         <button class="btn btn-warning btn-sm" onclick="addReminder(${payment.id})" title="Mahnung erfassen"> 📨 </button>`
+                                          : `<span class="text-success">Bezahlt am ${formatDate(payment.paymentDate) || "unbekannt"}</span>`
+                                  }
+                  ${
+                                      payment.status === "offen" && memberFormatter(["email"])
+                                          ? `<a href="mailto:${
+                                              memberFormatter(["email"])
+                                          }?subject=${
+                                              encodeURIComponent(`Erinnerung an die Zahlung des jährlichen Mitgliedsbeitrags für ${payment.year}`)
+                                          }" class="btn btn-info btn-sm" title="Erinnerungsmail verfassen + Zwischenablage mit Mailvorlage füllen" onclick="setClipboardErinnerungsmailContent('${memberFormatter(["childName"])}', '${payment.year}')"> 🕵🏻‍♂️ </a>`
+                                          : ""
+                                  }
+                </td>
+              </tr>`
+                              }
+                          )
+                          .join("");
+
+                      // Re-apply filter if we're preserving it
+                      if (currentFilter) {
+                          paymentSearchInput.value = currentFilter;
+                          const event = new Event('input');
+                          paymentSearchInput.dispatchEvent(event);
+                      }
+
+                      return data;
+                  });
+          });
   }
   
   
