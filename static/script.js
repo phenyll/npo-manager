@@ -270,7 +270,7 @@ async function addNewPayment(ref){
 }
 
 function setClipboardErinnerungsmailContent(nameDesKindes, jahr){
-    const mailContent = `<p>Liebe Mitglieder des Schulfördervereins,</p>
+    const mailContent = `<p>Liebes Mitglied des Schulfördervereins,</p>
 
 <p>wir hoffen, dass es Ihnen gut geht und Sie das vergangene Jahr gut überstanden haben. Wir möchten Sie daran erinnern, dass der <strong>jährliche Mitgliedsbeitrag in Höhe von nur 12 Euro für das Jahr ${jahr} noch offen</strong> ist. Mit Ihrem Beitrag unterstützen Sie unsere Schule und tragen dazu bei, dass wir weiterhin wertvolle Projekte und Aktivitäten für unsere Schülerinnen und Schüler anbieten können.</p>
 
