@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Mail-Einstellungen</title>
+  <link href="/static/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="container mt-5">
+    <a href="/" class="btn btn-secondary mb-3">← Zurück</a>
+    <h1 class="text-center">E-Mail-Einstellungen</h1>
+
+    <div class="card">
+      <div class="card-body">
+        <form id="emailSettingsForm">
+          <div class="mb-3">
+            <label for="smtpHost" class="form-label">SMTP Server</label>
+            <input type="text" class="form-control" id="smtpHost" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="smtpPort" class="form-label">Port</label>
+            <input type="number" class="form-control" id="smtpPort" required>
+          </div>
+
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="secure" checked>
+            <label class="form-check-label" for="secure">SSL/TLS verwenden</label>
+          </div>
+
+          <div class="mb-3">
+            <label for="username" class="form-label">Benutzername</label>
+            <input type="text" class="form-control" id="username" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">Passwort</label>
+            <input type="password" class="form-control" id="password" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="defaultSender" class="form-label">Absender-Email</label>
+            <input type="email" class="form-control" id="defaultSender">
+            <small class="form-text text-muted">Falls leer, wird die Vereins-E-Mail verwendet</small>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Speichern</button>
+          <button type="button" id="testConnection" class="btn btn-info">Verbindung testen</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load existing settings
+      fetch('/email-settings/data')
+        .then(response => response.json())
+        .then(data => {
+          if (data.settings) {
+            document.getElementById('smtpHost').value = data.settings.smtpHost || '';
+            document.getElementById('smtpPort').value = data.settings.smtpPort || 587;
+            document.getElementById('secure').checked = data.settings.secure === 1;
+            document.getElementById('username').value = data.settings.username || '';
+            document.getElementById('password').value = data.settings.password || '';
+            document.getElementById('defaultSender').value = data.settings.defaultSender || '';
+          }
+        })
+        .catch(error => console.error('Error loading settings:', error));
+
+      // Form submission
+      document.getElementById('emailSettingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const settings = {
+          smtpHost: document.getElementById('smtpHost').value,
+          smtpPort: parseInt(document.getElementById('smtpPort').value),
+          secure: document.getElementById('secure').checked ? 1 : 0,
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+          defaultSender: document.getElementById('defaultSender').value
+        };
+
+        fetch('/email-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert('E-Mail-Einstellungen gespeichert');
+          } else {
+            alert('Fehler: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error saving settings:', error);
+          alert('Ein Fehler ist aufgetreten');
+        });
+      });
+
+      // Test connection
+      document.getElementById('testConnection').addEventListener('click', function() {
+        const settings = {
+          smtpHost: document.getElementById('smtpHost').value,
+          smtpPort: parseInt(document.getElementById('smtpPort').value),
+          secure: document.getElementById('secure').checked ? 1 : 0,
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value
+        };
+
+        fetch('/email-settings/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert('Verbindung erfolgreich hergestellt');
+          } else {
+            alert('Verbindungsfehler: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error testing connection:', error);
+          alert('Ein Fehler ist aufgetreten');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

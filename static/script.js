@@ -616,7 +616,50 @@ function addReminder(paymentId) {
     const reminderDate = new Date().toISOString().split('T')[0]; // Today
     const reminderNotes = "";
 
-    // Send the reminder to the server
+    // Ask if user wants to send an email
+    const sendEmail = confirm("Möchten Sie eine Zahlungserinnerung per E-Mail versenden?");
+
+    if (sendEmail) {
+        // Send email reminder via server
+        fetch(`/payments/${paymentId}/send-reminder-email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error("Fehler beim Versenden der Erinnerungs-E-Mail");
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    alert("Zahlungserinnerung wurde per E-Mail versendet");
+                    loadPayments(true); // Reload payments to update UI while preserving filter
+                } else {
+                    alert("Fehler: " + data.message);
+
+                    // If email failed, add manual reminder
+                    addManualReminder(paymentId, reminderMethod, reminderDate,
+                        "E-Mail konnte nicht versendet werden: " + data.message);
+                }
+            })
+            .catch(error => {
+                console.error("Fehler:", error);
+                alert(error.message);
+
+                // If email sending failed, add manual reminder
+                addManualReminder(paymentId, reminderMethod, reminderDate,
+                    "E-Mail konnte nicht versendet werden");
+            });
+    } else {
+        // Add manual reminder
+        addManualReminder(paymentId, reminderMethod, reminderDate, reminderNotes);
+    }
+}
+
+// Helper function to add a manual reminder
+function addManualReminder(paymentId, reminderMethod, reminderDate, reminderNotes) {
     fetch(`/payments/${paymentId}/remind`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -635,7 +678,7 @@ function addReminder(paymentId) {
         })
         .then(data => {
             alert("Mahnung erfolgreich erfasst");
-            loadPayments(); // Reload payments to update UI
+            loadPayments(true); // Reload payments to update UI while preserving filter
         })
         .catch(error => {
             console.error("Fehler:", error);

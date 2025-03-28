@@ -6,6 +6,7 @@ const xlsx = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 const util = require('./utils');
+const emailService = require('./email');
 
 router.get("/stats", (req, res) => {
     const currentYear = new Date().getFullYear();
@@ -356,6 +357,54 @@ router.post("/", (req, res) => {
                 }
             );
         });
+    });
+
+    // New route to send a reminder email
+    router.post("/:id/send-reminder-email", async (req, res) => {
+        const { id } = req.params;
+        const createdBy = req.session?.user?.username || 'System';
+
+        try {
+            // Get payment details
+            const payment = await new Promise((resolve, reject) => {
+                db.get("SELECT * FROM payments WHERE id = ?", [id], (err, payment) => {
+                    if (err) reject(err);
+                    else if (!payment) reject(new Error("Payment not found"));
+                    else resolve(payment);
+                });
+            });
+
+            // Send email
+            const emailResult = await emailService.sendReminderEmail(
+                payment.memberId,
+                id,
+                payment.year
+            );
+
+            // Record reminder in history
+            await new Promise((resolve, reject) => {
+                db.run(
+                    "INSERT INTO reminder_history (payment_id, reminder_date, reminder_method, reminder_notes, created_by) VALUES (?, ?, ?, ?, ?)",
+                    [id, new Date().toISOString().split('T')[0], "Email", `Email sent to member's address`, createdBy],
+                    function(err) {
+                        if (err) reject(err);
+                        else resolve(this.lastID);
+                    }
+                );
+            });
+
+            res.status(200).json({
+                success: true,
+                message: "Reminder email sent successfully",
+                emailDetails: emailResult
+            });
+        } catch (error) {
+            console.error("Error sending reminder email:", error);
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
     });
 
 module.exports = router;

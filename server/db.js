@@ -140,6 +140,18 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     )
                 `);
 
+                await runAsync(`
+                    CREATE TABLE IF NOT EXISTS email_settings (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      smtpHost TEXT NOT NULL,
+                      smtpPort INTEGER NOT NULL,
+                      secure INTEGER DEFAULT 1,
+                      username TEXT NOT NULL,
+                      password TEXT NOT NULL,
+                      defaultSender TEXT
+                    );
+                `);
+
                 // Standardrollen und -berechtigungen
                 await runAsync(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (1, 'admin', 'Administrator');`);
                 await runAsync(`INSERT OR IGNORE INTO roles (id, name, description) VALUES (2, 'editor', 'Verwalter');`);

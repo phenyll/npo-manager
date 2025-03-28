@@ -9,6 +9,7 @@ const db = require('./db'); // Datenbankverbindung importieren
 const paymentRoutes = require('./payment');
 const memberRoutes = require('./member');
 const userRoutes = require('./user');
+const emailSettings = require('./email-settings');
 const organizationRouter = require('./organization');
 const { isAuthenticated, logRequest } = require('./middleware');
 
@@ -99,6 +100,7 @@ app.use(isAuthenticated);
 app.use('/payments', paymentRoutes);
 app.use('/members', memberRoutes.router);
 app.use('/organization', organizationRouter);
+app.use('/email-settings', emailSettings);
 app.use('/', userRoutes.router);
 
 app.use((req, res, next) => {
