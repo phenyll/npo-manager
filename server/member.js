@@ -112,11 +112,12 @@ router.put("/:id", (req, res) => {
     joinDate,
     expectedExitDate,
     autoExit,
+    actualExit
   } = req.body;
 
   db.run(
       `UPDATE members
-       SET firstName = ?, lastName = ?, city = ?, email = ?, phone = ?, childName = ?, enrollmentYear = ?, joinDate = ?, expectedExitDate = ?, actualExit = ?
+       SET firstName = ?, lastName = ?, city = ?, email = ?, phone = ?, childName = ?, enrollmentYear = ?, joinDate = ?, expectedExitDate = ?, autoExit = ?, actualExit = ?
        WHERE id = ?`,
       [
         firstName,
@@ -129,6 +130,7 @@ router.put("/:id", (req, res) => {
         joinDate,
         expectedExitDate,
         autoExit,
+        actualExit,
         req.params.id,
       ],
       function (err) {
