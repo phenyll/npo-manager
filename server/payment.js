@@ -30,13 +30,13 @@ router.get("/stats", (req, res) => {
                 }
 
                 // Neue Abfragen hinzugefügt
-                db.get(`SELECT SUM(amount) AS totalOutstandingAmount FROM payments WHERE year = ? AND status = 'offen'`, [currentYear], (err, totalOutstandingAmountRow) => {
+                db.get(`SELECT SUM(amount) AS totalOutstandingAmount FROM payments WHERE status = 'offen'`, (err, totalOutstandingAmountRow) => {
                     if (err) {
                         console.error("Fehler beim Abrufen des ausstehenden Gesamtbetrags:", err.message);
                         return res.status(500).send(err.message);
                     }
 
-                    db.get(`SELECT COUNT(DISTINCT memberId) AS membersWithOutstandingPayments FROM payments WHERE year = ? AND status = 'offen'`, [currentYear], (err, membersWithOutstandingPaymentsRow) => {
+                    db.get(`SELECT COUNT(DISTINCT memberId) AS membersWithOutstandingPayments FROM payments WHERE status = 'offen'`, (err, membersWithOutstandingPaymentsRow) => {
                         if (err) {
                             console.error("Fehler beim Abrufen der Anzahl der Mitglieder mit ausstehenden Zahlungen:", err.message);
                             return res.status(500).send(err.message);
