@@ -2,16 +2,34 @@ const membersTable = document.getElementById("membersTable");
 const paymentsTable = document.getElementById("paymentsTable");
 const searchInput = document.getElementById("searchInput");
 const paymentSearchInput = document.getElementById("paymentSearchInput");
+const paymentStatusFilter = document.getElementById("paymentStatusFilter");
 
-paymentSearchInput.addEventListener("input", function() {
-  const filter = this.value.toLowerCase();
+function filterPayments() {
+  const searchFilter = paymentSearchInput.value.toLowerCase();
+  const statusFilter = paymentStatusFilter ? paymentStatusFilter.value : '';
   const rows = document.querySelectorAll('#paymentsTable tr');
+  
   rows.forEach(row => {
     const memberIdCell = row.querySelector('td:first-child');
-    const matches = memberIdCell && filter.split(' ').every(word => memberIdCell.textContent.toLowerCase().includes(word));
-    row.style.display = filter?(matches ? '' : 'none'):'';
+    const statusCell = row.querySelector('td:nth-child(4)'); // Status-Spalte
+    
+    // Text-basierte Suche
+    const searchMatches = !searchFilter || (memberIdCell && searchFilter.split(' ').every(word => 
+      memberIdCell.textContent.toLowerCase().includes(word)
+    ));
+    
+    // Status-Filter
+    const statusMatches = !statusFilter || (statusCell && statusCell.textContent.toLowerCase().includes(statusFilter));
+    
+    // Zeile anzeigen nur wenn beide Filter passen
+    row.style.display = searchMatches && statusMatches ? '' : 'none';
   });
-});
+}
+
+paymentSearchInput.addEventListener("input", filterPayments);
+if (paymentStatusFilter) {
+  paymentStatusFilter.addEventListener("change", filterPayments);
+}
 
 window.setTimeout(setUserInfo, 500);
 
@@ -124,13 +142,16 @@ function loadMembers() {
     const paymentsTab = new bootstrap.Tab(document.querySelector('#payments-tab'));
     paymentsTab.show();
     paymentSearchInput.value = `${memberId} ${window.members.find(m => m.id === memberId).firstName} ${window.members.find(m => m.id === memberId).lastName}`;
-    const event = new Event('input');
-    paymentSearchInput.dispatchEvent(event);
+    if (paymentStatusFilter) {
+      paymentStatusFilter.value = ''; // Reset status filter when viewing specific member
+    }
+    filterPayments();
   }
   
   //Beiträge laden
   function loadPayments(preserveFilter = true) {
-      const currentFilter = preserveFilter ? paymentSearchInput.value : '';
+      const currentSearchFilter = preserveFilter ? paymentSearchInput.value : '';
+      const currentStatusFilter = preserveFilter && paymentStatusFilter ? paymentStatusFilter.value : '';
 
       return fetch("/payments")
           .then((response) => {
@@ -199,11 +220,13 @@ function loadMembers() {
                           )
                           .join("");
 
-                      // Re-apply filter if we're preserving it
-                      if (currentFilter) {
-                          paymentSearchInput.value = currentFilter;
-                          const event = new Event('input');
-                          paymentSearchInput.dispatchEvent(event);
+                      // Re-apply filters if we're preserving them
+                      if (currentSearchFilter || currentStatusFilter) {
+                          paymentSearchInput.value = currentSearchFilter;
+                          if (paymentStatusFilter) {
+                              paymentStatusFilter.value = currentStatusFilter;
+                          }
+                          filterPayments();
                       }
 
                       return data;
