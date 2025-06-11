@@ -34,11 +34,50 @@ router.get("/stats", (req, res) => {
 });
 
 router.get("/", (req, res) => {
-  db.all("SELECT * FROM members", [], (err, rows) => {
+  let sql = `
+    SELECT 
+      m.*,
+      CASE WHEN op.open_payments > 0 THEN 1 ELSE 0 END as has_open_payments,
+      COALESCE(op.open_payments, 0) as open_payments_count,
+      COALESCE(op.total_open_amount, 0) as total_open_amount,
+      CASE WHEN m.actualExit IS NOT NULL THEN 1 ELSE 0 END as has_actual_exit,
+      CASE WHEN m.expectedExitDate IS NOT NULL THEN 1 ELSE 0 END as has_expected_exit,
+      CASE WHEN m.autoExit IS NOT NULL THEN 1 ELSE 0 END as has_auto_exit,
+      CASE WHEN m.email IS NOT NULL AND m.email != '' THEN 1 ELSE 0 END as has_email
+    FROM members m
+    LEFT JOIN (
+      SELECT 
+        memberId,
+        COUNT(*) as open_payments,
+        SUM(amount) as total_open_amount
+      FROM payments 
+      WHERE status = 'offen'
+      GROUP BY memberId
+    ) op ON m.id = op.memberId
+    ORDER BY m.lastName, m.firstName
+  `;
+
+  db.all(sql, [], (err, rows) => {
     if (err) {
       res.status(500).send(err.message);
     } else {
-      res.json({ members: rows });
+      // Statistiken berechnen
+      const totalCount = rows.length;
+      const totalOpenAmount = rows.reduce((sum, member) => sum + (member.total_open_amount || 0), 0);
+      const exitedCount = rows.filter(member => member.has_actual_exit).length;
+      const autoExitCount = rows.filter(member => member.has_auto_exit).length;
+
+      const response = {
+        members: rows,
+        statistics: {
+          totalCount,
+          totalOpenAmount,
+          exitedCount,
+          autoExitCount
+        }
+      };
+      
+      res.json(response);
     }
   });
 });
