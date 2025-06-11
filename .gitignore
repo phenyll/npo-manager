@@ -1,4 +1,5 @@
 node_modules/
-database/club.db
+sessions/
 .DS_Store
 /server/database/club.db
+cookies.txt

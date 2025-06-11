@@ -5,6 +5,7 @@ const xlsx = require("xlsx");
 const path = require("path");
 const fs = require("fs");
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const db = require('./db'); // Datenbankverbindung importieren
 const paymentRoutes = require('./payment');
 const memberRoutes = require('./member');
@@ -23,10 +24,19 @@ app.use(logRequest);
 const upload = multer({ dest: "uploads/" });
 
 app.use(session({
+    store: new FileStore({
+        path: './sessions',
+        logFn: function() {}, // Disable logging
+        retries: 1,
+        ttl: 86400 // 24 hours in seconds
+    }),
     secret: 'qp47flzrqblciuvbaoqrzblqWAERBSTOAIRNVY LI<BARUAÖuaruöARUHGSEURÖbalrhfbvlsiearbvajbrl<', // Ändere dies zu einem sicheren geheimen Schlüssel
     resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false } // Setze auf true, wenn HTTPS verwendet wird
+    saveUninitialized: false,
+    cookie: { 
+        secure: false, // Setze auf true, wenn HTTPS verwendet wird
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
 }));
 
 // Login-Seite

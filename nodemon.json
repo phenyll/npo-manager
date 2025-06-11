@@ -1,0 +1,15 @@
+{
+  "watch": [
+    "server/",
+    "static/",
+    "public/"
+  ],
+  "ext": "js,json,html,css",
+  "ignore": [
+    "node_modules/",
+    "uploads/",
+    "sessions/",
+    "server/database/club.db"
+  ],
+  "delay": "1000"
+}
