@@ -48,7 +48,109 @@
       <!-- Mitglieder Tab -->
       <div class="tab-pane fade show active" id="members" role="tabpanel">
         <h3>Mitglieder</h3>
-        <input type="text" id="searchInput" class="form-control mb-3" placeholder="Mitglieder suchen...">
+        
+        <!-- Filter-Bereich -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="bi bi-funnel"></i> Filter und Export
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="row mb-3">
+              <div class="col-md-2">
+                <label class="form-label">Offene Beiträge</label>
+                <select class="form-select" id="filterOpenPayments">
+                  <option value="">Alle</option>
+                  <option value="true">Ja</option>
+                  <option value="false">Nein</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Austritt gesetzt</label>
+                <select class="form-select" id="filterActualExit">
+                  <option value="">Alle</option>
+                  <option value="true">Ja</option>
+                  <option value="false">Nein</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Voraus. Austritt</label>
+                <select class="form-select" id="filterExpectedExit">
+                  <option value="">Alle</option>
+                  <option value="true">Ja</option>
+                  <option value="false">Nein</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Auto-Austritt</label>
+                <select class="form-select" id="filterAutoExit">
+                  <option value="">Alle</option>
+                  <option value="true">Ja</option>
+                  <option value="false">Nein</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Hat E-Mail</label>
+                <select class="form-select" id="filterHasEmail">
+                  <option value="">Alle</option>
+                  <option value="true">Ja</option>
+                  <option value="false">Nein</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Aktionen</label>
+                <div>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="resetFilters()">
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                  </button>
+                  <button class="btn btn-sm btn-success" id="exportFilteredBtn">
+                    <i class="bi bi-download"></i> Excel
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-3">
+                <label class="form-label">Eintritt von</label>
+                <input type="date" class="form-control" id="filterJoinDateFrom">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Eintritt bis</label>
+                <input type="date" class="form-control" id="filterJoinDateTo">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Textsuche</label>
+                <input type="text" id="searchInput" class="form-control" placeholder="Namen, Ort, E-Mail durchsuchen...">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summenbereich -->
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-md-3">
+                <h6 class="text-muted">Anzahl</h6>
+                <h4 id="summaryCount">-</h4>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted">Summe Offene Beiträge</h6>
+                <h4 id="summaryOpenAmount">-</h4>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted">Anzahl ausgetreten</h6>
+                <h4 id="summaryExited">-</h4>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted">Anzahl mit Auto-Austritt</h6>
+                <h4 id="summaryAutoExit">-</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button class="btn btn-primary mb-3" id="addMemberButton">Mitglied hinzufügen</button>
         <table class="table table-striped">
           <thead>
@@ -62,6 +164,8 @@
               <th>Eintritt</th>
               <th>Vorauss. Austritt</th>
               <th>Austritt</th>
+              <th>Offene Beiträge</th>
+              <th>E-Mail</th>
               <th>Aktionen</th>
             </tr>
           </thead>

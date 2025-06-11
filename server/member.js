@@ -4,31 +4,25 @@ const router = express.Router();
 const db = require('./db');
 const multer = require('multer');
 const xlsx = require('xlsx');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
 
 const upload = multer({ dest: 'uploads/' });
 
 router.get("/stats", (req, res) => {
     const currentYear = new Date().getFullYear();
-    console.log("Mitgliederstatistiken für das Jahr", currentYear);
 
     db.get("SELECT COUNT(*) AS totalMembers FROM members", (err, totalMembersRow) => {
         if (err) {
-            console.error("Fehler beim Abrufen der Mitglieder-Statistiken:", err.message);
             return res.status(500).send(err.message);
         } else {
             db.get(`SELECT COUNT(*) AS newMembersThisYear FROM members WHERE strftime('%Y', joinDate) = ?`, [currentYear], (err, newMembersRow) => {
                 if (err) {
-                    console.error("Fehler beim Abrufen der neuen Mitglieder:", err.message);
                     return res.status(500).send(err.message);
                 }
 
                 const totalMembers = totalMembersRow.totalMembers;
                 const newMembersThisYear = newMembersRow.newMembersThisYear;
-
-                console.log("Mitglieder insgesamt:", totalMembers);
-                console.log("Neue Mitglieder in", currentYear, ":", newMembersThisYear);
 
                 res.json({
                     totalMembers: totalMembers,
@@ -88,6 +82,224 @@ router.post("/", (req, res) => {
         }
       }
   );
+});
+
+// Gefilterte Mitgliederliste mit Statistiken
+router.get("/filtered", (req, res) => {
+  const {
+    hasOpenPayments,
+    hasActualExit,
+    hasExpectedExit,
+    joinDateFrom,
+    joinDateTo,
+    hasAutoExit,
+    hasEmail
+  } = req.query;
+
+  let sql = `
+    SELECT 
+      m.*,
+      CASE WHEN op.open_payments > 0 THEN 1 ELSE 0 END as has_open_payments,
+      COALESCE(op.open_payments, 0) as open_payments_count,
+      COALESCE(op.total_open_amount, 0) as total_open_amount,
+      CASE WHEN m.actualExit IS NOT NULL THEN 1 ELSE 0 END as has_actual_exit,
+      CASE WHEN m.expectedExitDate IS NOT NULL THEN 1 ELSE 0 END as has_expected_exit,
+      CASE WHEN m.autoExit IS NOT NULL THEN 1 ELSE 0 END as has_auto_exit,
+      CASE WHEN m.email IS NOT NULL AND m.email != '' THEN 1 ELSE 0 END as has_email
+    FROM members m
+    LEFT JOIN (
+      SELECT 
+        memberId,
+        COUNT(*) as open_payments,
+        SUM(amount) as total_open_amount
+      FROM payments 
+      WHERE status = 'offen'
+      GROUP BY memberId
+    ) op ON m.id = op.memberId
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  // Filter anwenden
+  if (hasOpenPayments === 'true') {
+    sql += " AND op.open_payments > 0";
+  } else if (hasOpenPayments === 'false') {
+    sql += " AND (op.open_payments IS NULL OR op.open_payments = 0)";
+  }
+
+  if (hasActualExit === 'true') {
+    sql += " AND m.actualExit IS NOT NULL";
+  } else if (hasActualExit === 'false') {
+    sql += " AND m.actualExit IS NULL";
+  }
+
+  if (hasExpectedExit === 'true') {
+    sql += " AND m.expectedExitDate IS NOT NULL";
+  } else if (hasExpectedExit === 'false') {
+    sql += " AND m.expectedExitDate IS NULL";
+  }
+
+  if (hasAutoExit === 'true') {
+    sql += " AND m.autoExit IS NOT NULL";
+  } else if (hasAutoExit === 'false') {
+    sql += " AND m.autoExit IS NULL";
+  }
+
+  if (hasEmail === 'true') {
+    sql += " AND m.email IS NOT NULL AND m.email != ''";
+  } else if (hasEmail === 'false') {
+    sql += " AND (m.email IS NULL OR m.email = '')";
+  }
+
+  if (joinDateFrom) {
+    sql += " AND m.joinDate >= ?";
+    params.push(joinDateFrom);
+  }
+
+  if (joinDateTo) {
+    sql += " AND m.joinDate <= ?";
+    params.push(joinDateTo);
+  }
+
+  sql += " ORDER BY m.lastName, m.firstName";
+
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    // Statistiken berechnen
+    const totalCount = rows.length;
+    const totalOpenAmount = rows.reduce((sum, member) => sum + (member.total_open_amount || 0), 0);
+    const exitedCount = rows.filter(member => member.has_actual_exit).length;
+    const autoExitCount = rows.filter(member => member.has_auto_exit).length;
+
+    const response = {
+      members: rows,
+      statistics: {
+        totalCount,
+        totalOpenAmount,
+        exitedCount,
+        autoExitCount
+      }
+    };
+    
+    res.json(response);
+  });
+});
+
+// Excel-Export für gefilterte Mitgliederliste
+router.get("/export", (req, res) => {
+  const {
+    hasOpenPayments,
+    hasActualExit,
+    hasExpectedExit,
+    joinDateFrom,
+    joinDateTo,
+    hasAutoExit,
+    hasEmail
+  } = req.query;
+
+  let sql = `
+    SELECT 
+      m.id as "Mitglied Nr",
+      m.firstName as "Vorname",
+      m.lastName as "Nachname", 
+      m.city as "Ort",
+      m.email as "E-Mail",
+      m.phone as "Telefon",
+      m.childName as "Kindesname",
+      m.enrollmentYear as "Einschulungsjahr",
+      m.joinDate as "Eintrittsdatum",
+      m.expectedExitDate as "Voraussichtlicher Austritt",
+      m.autoExit as "Automatischer Austritt",
+      m.actualExit as "Tatsächlicher Austritt",
+      COALESCE(op.open_payments, 0) as "Anzahl offene Beiträge",
+      COALESCE(op.total_open_amount, 0) as "Summe offene Beiträge",
+      CASE WHEN m.actualExit IS NOT NULL THEN 'Ja' ELSE 'Nein' END as "Ausgetreten",
+      CASE WHEN m.expectedExitDate IS NOT NULL THEN 'Ja' ELSE 'Nein' END as "Voraussichtlicher Austritt gesetzt",
+      CASE WHEN m.autoExit IS NOT NULL THEN 'Ja' ELSE 'Nein' END as "Automatischer Austritt gesetzt",
+      CASE WHEN m.email IS NOT NULL AND m.email != '' THEN 'Ja' ELSE 'Nein' END as "Hat E-Mail-Adresse"
+    FROM members m
+    LEFT JOIN (
+      SELECT 
+        memberId,
+        COUNT(*) as open_payments,
+        SUM(amount) as total_open_amount
+      FROM payments 
+      WHERE status = 'offen'
+      GROUP BY memberId
+    ) op ON m.id = op.memberId
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  // Gleiche Filter wie bei /filtered anwenden
+  if (hasOpenPayments === 'true') {
+    sql += " AND op.open_payments > 0";
+  } else if (hasOpenPayments === 'false') {
+    sql += " AND (op.open_payments IS NULL OR op.open_payments = 0)";
+  }
+
+  if (hasActualExit === 'true') {
+    sql += " AND m.actualExit IS NOT NULL";
+  } else if (hasActualExit === 'false') {
+    sql += " AND m.actualExit IS NULL";
+  }
+
+  if (hasExpectedExit === 'true') {
+    sql += " AND m.expectedExitDate IS NOT NULL";
+  } else if (hasExpectedExit === 'false') {
+    sql += " AND m.expectedExitDate IS NULL";
+  }
+
+  if (hasAutoExit === 'true') {
+    sql += " AND m.autoExit IS NOT NULL";
+  } else if (hasAutoExit === 'false') {
+    sql += " AND m.autoExit IS NULL";
+  }
+
+  if (hasEmail === 'true') {
+    sql += " AND m.email IS NOT NULL AND m.email != ''";
+  } else if (hasEmail === 'false') {
+    sql += " AND (m.email IS NULL OR m.email = '')";
+  }
+
+  if (joinDateFrom) {
+    sql += " AND m.joinDate >= ?";
+    params.push(joinDateFrom);
+  }
+
+  if (joinDateTo) {
+    sql += " AND m.joinDate <= ?";
+    params.push(joinDateTo);
+  }
+
+  sql += " ORDER BY m.lastName, m.firstName";
+
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      return res.status(500).send(err.message);
+    }
+
+    const workbook = xlsx.utils.book_new();
+    const worksheet = xlsx.utils.json_to_sheet(rows);
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Gefilterte Mitgliederliste");
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filePath = path.join(__dirname, "../uploads", `mitgliederliste_gefiltert_${timestamp}.xlsx`);
+    
+    xlsx.writeFile(workbook, filePath);
+
+    res.download(filePath, `mitgliederliste_gefiltert_${timestamp}.xlsx`, (err) => {
+      if (err) {
+        // Silent error handling
+      }
+      fs.unlinkSync(filePath); // Temporäre Datei löschen
+    });
+  });
 });
 
 router.get("/:id", (req, res) => {
@@ -188,7 +400,7 @@ router.post("/import-members", upload.single("file"), (req, res) => {
   db.serialize(() => {
     db.get("SELECT MAX(id) as maxId FROM members", (err, row) => {
       if (err) {
-        console.error("Fehler beim Abrufen der max ID:", err.message);
+        return res.status(500).send("Fehler beim Import");
       } else {
         maxId = row.maxId || 0;
 
@@ -216,7 +428,6 @@ router.post("/import-members", upload.single("file"), (req, res) => {
           const firstName = row["Vorname"] || "Unbekannt";
           const lastName = row["Nachname"];
           if (!lastName) {
-            console.log("Zeile übersprungen, da Nachname fehlt.");
             return;
           }
           const city = row["Ort"];
@@ -243,7 +454,7 @@ router.post("/import-members", upload.single("file"), (req, res) => {
               autoExit,
               (err) => {
                 if (err) {
-                  console.error("Fehler beim Importieren in 'members':", err.message);
+                  // Silent error handling for production
                 }
               }
           );
@@ -251,10 +462,8 @@ router.post("/import-members", upload.single("file"), (req, res) => {
 
         stmt.finalize((err) => {
           if (err) {
-            console.error("Fehler beim Finalisieren des Statements:", err.message);
             return res.status(500).send("Fehler beim Importieren der Mitglieder.");
           } else {
-            console.log("Mitglieder erfolgreich importiert.");
             return res.status(200).send("Mitglieder erfolgreich importiert.");
           }
         });
@@ -263,9 +472,7 @@ router.post("/import-members", upload.single("file"), (req, res) => {
   });
 
   fs.unlink(file.path, (err) => {
-    if (err) {
-      console.error("Fehler beim Löschen der hochgeladenen Datei:", err.message);
-    }
+    // Silent cleanup - file deletion is not critical
   });
 });
 

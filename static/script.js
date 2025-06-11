@@ -84,20 +84,58 @@ function loadOrganizationDetails() {
         });
 }
 
-// Mitglieder laden
+// Mitglieder laden (erweitert für Filter und neue Spalten)
 function loadMembers() {
-    fetch("/members")
+    // Filter aus dem UI abrufen
+    const filters = getFiltersFromUI();
+    
+    // URL Parameter für Filter aufbauen
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+        if (filters[key] !== '' && filters[key] !== null) {
+            params.append(key, filters[key]);
+        }
+    });
+    
+    // API-Endpoint basierend auf Filter wählen
+    const endpoint = params.toString() ? `/members/filtered?${params.toString()}` : "/members";
+    
+    console.log("Loading members from:", endpoint);
+    
+    fetch(endpoint)
       .then((response) => {
+          console.log("Response status:", response.status);
           if (response.status === 401) {
               window.location.href = "/login";
               return;
           }
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          // Check if response has content
+          const contentType = response.headers.get("content-type");
+          if (!contentType || !contentType.includes("application/json")) {
+              throw new Error("Response is not JSON");
+          }
+          
           return response.json();
       })
       .then((data) => {
-        window.members = data.members;
+        console.log("Received data:", data);
+        
+        // Speichern für andere Funktionen
+        window.members = data.members || data;
+        
+        // Statistiken aktualisieren (falls vorhanden)
+        if (data.statistics) {
+            updateSummaryStats(data.statistics);
+        }
+        
         const searchQuery = searchInput.value.toLowerCase();
-        const filteredMembers = data.members.filter((member) => {
+        const membersToDisplay = data.members || data;
+        
+        const filteredMembers = membersToDisplay.filter((member) => {
           return (
             (member.firstName && member.firstName.toLowerCase().includes(searchQuery)) ||
             (member.lastName && member.lastName.toLowerCase().includes(searchQuery)) ||
@@ -110,6 +148,7 @@ function loadMembers() {
             (member.actualExit && member.actualExit.toLowerCase().includes(searchQuery))
           );
         });
+        
         membersTable.innerHTML = filteredMembers
           .map(
             (member) => `
@@ -123,6 +162,8 @@ function loadMembers() {
               <td>${formatDate(member.joinDate) || "-"}</td>
               <td>${formatDate(member.expectedExitDate) || "-"}</td>
               <td>${formatDate(member.actualExit) || "-"}</td>
+              <td>${member.total_open_amount ? member.total_open_amount.toFixed(2) + ' €' : '0.00 €'}</td>
+              <td>${member.has_email ? 'Ja' : 'Nein'}</td>
               <td>
                 <div style="white-space: nowrap">
                     <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})" title="Mitgliedsdaten bearbeiten">📝</button>
@@ -135,6 +176,67 @@ function loadMembers() {
             </tr>`
           )
           .join("");
+      })
+      .catch((error) => {
+        console.error("Error loading members:", error);
+        alert("Fehler beim Laden der Mitgliederdaten: " + error.message);
+        
+        // Fallback: Load regular members if filtered fails
+        if (params.toString()) {
+            console.log("Falling back to regular members load...");
+            fetch("/members")
+                .then(response => response.json())
+                .then(data => {
+                    window.members = data.members || data;
+                    // Re-render table with fallback data
+                    const searchQuery = searchInput.value.toLowerCase();
+                    const filteredMembers = window.members.filter((member) => {
+                      return (
+                        (member.firstName && member.firstName.toLowerCase().includes(searchQuery)) ||
+                        (member.lastName && member.lastName.toLowerCase().includes(searchQuery)) ||
+                        (member.city && member.city.toLowerCase().includes(searchQuery)) ||
+                        (member.childName && member.childName.toLowerCase().includes(searchQuery)) ||
+                        (member.enrollmentYear && member.enrollmentYear.toString().includes(searchQuery)) ||
+                        (member.joinDate && member.joinDate.toLowerCase().includes(searchQuery)) ||
+                        (member.expectedExitDate && member.expectedExitDate.toLowerCase().includes(searchQuery)) ||
+                        (member.autoExit && member.autoExit.toLowerCase().includes(searchQuery)) ||
+                        (member.actualExit && member.actualExit.toLowerCase().includes(searchQuery))
+                      );
+                    });
+                    
+                    membersTable.innerHTML = filteredMembers
+                      .map(
+                        (member) => `
+                        <tr style="background-color: ${member.actualExit ? "#f8d7da" : ""}">
+                          <td>${member.id}</td>
+                          <td>${member.firstName}</td>
+                          <td>${member.lastName}</td>
+                          <td>${member.city}</td>
+                          <td>${member.childName || "-"}</td>
+                          <td>${member.enrollmentYear || "-"}</td>
+                          <td>${formatDate(member.joinDate) || "-"}</td>
+                          <td>${formatDate(member.expectedExitDate) || "-"}</td>
+                          <td>${formatDate(member.actualExit) || "-"}</td>
+                          <td>0.00 €</td>
+                          <td>${member.email ? 'Ja' : 'Nein'}</td>
+                          <td>
+                            <div style="white-space: nowrap">
+                                <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})" title="Mitgliedsdaten bearbeiten">📝</button>
+                                <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})" title="Zahlungen vom Mitglied verwalten">💶</button>
+                                ${ member.actualExit?"🏁":`
+                                    <button class="btn btn-warning btn-sm" onclick="recordMemberExit(${member.id})" title="Austritt erfassen">🚪</button>
+                                    ` }
+                            </div>
+                          </td>
+                        </tr>`
+                      )
+                      .join("");
+                })
+                .catch(fallbackError => {
+                    console.error("Fallback also failed:", fallbackError);
+                    membersTable.innerHTML = '<tr><td colspan="12" class="text-center text-danger">Fehler beim Laden der Mitgliederdaten</td></tr>';
+                });
+        }
       });
   }
 
@@ -709,7 +811,131 @@ function addManualReminder(paymentId, reminderMethod, reminderDate, reminderNote
         });
 }
 
+// Filter-Hilfsfunktionen
+function getFiltersFromUI() {
+    const openPaymentsFilter = document.getElementById('filterOpenPayments');
+    const actualExitFilter = document.getElementById('filterActualExit');
+    const expectedExitFilter = document.getElementById('filterExpectedExit');
+    const autoExitFilter = document.getElementById('filterAutoExit');
+    const emailFilter = document.getElementById('filterHasEmail');
+    const joinDateFromFilter = document.getElementById('filterJoinDateFrom');
+    const joinDateToFilter = document.getElementById('filterJoinDateTo');
+    
+    return {
+        hasOpenPayments: openPaymentsFilter ? openPaymentsFilter.value : '',
+        hasActualExit: actualExitFilter ? actualExitFilter.value : '',
+        hasExpectedExit: expectedExitFilter ? expectedExitFilter.value : '',
+        hasAutoExit: autoExitFilter ? autoExitFilter.value : '',
+        hasEmail: emailFilter ? emailFilter.value : '',
+        joinDateFrom: joinDateFromFilter ? joinDateFromFilter.value : '',
+        joinDateTo: joinDateToFilter ? joinDateToFilter.value : ''
+    };
+}
+
+function updateSummaryStats(statistics) {
+    const totalCountElement = document.getElementById('summaryCount');
+    const totalOpenAmountElement = document.getElementById('summaryOpenAmount');
+    const exitedCountElement = document.getElementById('summaryExited');
+    const autoExitCountElement = document.getElementById('summaryAutoExit');
+    
+    if (totalCountElement) {
+        totalCountElement.textContent = statistics.totalCount || 0;
+    }
+    if (totalOpenAmountElement) {
+        totalOpenAmountElement.textContent = (statistics.totalOpenAmount || 0).toFixed(2) + ' €';
+    }
+    if (exitedCountElement) {
+        exitedCountElement.textContent = statistics.exitedCount || 0;
+    }
+    if (autoExitCountElement) {
+        autoExitCountElement.textContent = statistics.autoExitCount || 0;
+    }
+}
+
+function exportExcel() {
+    const filters = getFiltersFromUI();
+    const params = new URLSearchParams();
+    
+    Object.keys(filters).forEach(key => {
+        if (filters[key] !== '' && filters[key] !== null) {
+            params.append(key, filters[key]);
+        }
+    });
+    
+    const url = params.toString() ? `/members/export?${params.toString()}` : '/members/export';
+    
+    fetch(url)
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mitgliederliste_gefiltert_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.error('Fehler beim Excel-Export:', error);
+            alert('Fehler beim Exportieren der Excel-Datei');
+        });
+}
+
+function setupFilterEventListeners() {
+    // Event-Listener für alle Filter hinzufügen
+    const filterElements = [
+        'filterOpenPayments',
+        'filterActualExit', 
+        'filterExpectedExit',
+        'filterAutoExit',
+        'filterHasEmail',
+        'filterJoinDateFrom',
+        'filterJoinDateTo'
+    ];
+    
+    filterElements.forEach(elementId => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.addEventListener('change', () => {
+                loadMembers(); // Tabelle neu laden mit neuen Filtern
+            });
+        }
+    });
+    
+    // Event-Listener für Export-Button
+    const exportButton = document.getElementById('exportFilteredBtn');
+    if (exportButton) {
+        exportButton.addEventListener('click', exportExcel);
+    }
+}
+
+// Beim DOM-Load die Event-Listener einrichten
+document.addEventListener('DOMContentLoaded', function() {
+    setupFilterEventListeners();
+});
+
 // Initiales Laden der Daten
 loadMembers();
 loadPayments();
 loadOrganizationDetails();
+
+function resetFilters() {
+    const filterElements = [
+        'filterOpenPayments',
+        'filterActualExit', 
+        'filterExpectedExit',
+        'filterAutoExit',
+        'filterHasEmail',
+        'filterJoinDateFrom',
+        'filterJoinDateTo'
+    ];
+    
+    filterElements.forEach(elementId => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.value = '';
+        }
+    });
+    loadMembers(); // Tabelle neu laden ohne Filter
+}
