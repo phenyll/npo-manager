@@ -1,3 +1,4 @@
 node_modules/
 database/club.db
 .DS_Store
+/server/database/club.db
