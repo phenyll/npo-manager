@@ -40,9 +40,9 @@ router.get("/", (req, res) => {
       CASE WHEN op.open_payments > 0 THEN 1 ELSE 0 END as has_open_payments,
       COALESCE(op.open_payments, 0) as open_payments_count,
       COALESCE(op.total_open_amount, 0) as total_open_amount,
-      CASE WHEN m.actualExit IS NOT NULL THEN 1 ELSE 0 END as has_actual_exit,
-      CASE WHEN m.expectedExitDate IS NOT NULL THEN 1 ELSE 0 END as has_expected_exit,
-      CASE WHEN m.autoExit IS NOT NULL THEN 1 ELSE 0 END as has_auto_exit,
+      CASE WHEN m.actualExit IS NOT NULL AND m.actualExit != '' THEN 1 ELSE 0 END as has_actual_exit,
+      CASE WHEN m.expectedExitDate IS NOT NULL AND m.expectedExitDate != '' THEN 1 ELSE 0 END as has_expected_exit,
+      CASE WHEN m.autoExit IS NOT NULL AND m.autoExit != '' THEN 1 ELSE 0 END as has_auto_exit,
       CASE WHEN m.email IS NOT NULL AND m.email != '' THEN 1 ELSE 0 END as has_email
     FROM members m
     LEFT JOIN (
@@ -141,9 +141,9 @@ router.get("/filtered", (req, res) => {
       CASE WHEN op.open_payments > 0 THEN 1 ELSE 0 END as has_open_payments,
       COALESCE(op.open_payments, 0) as open_payments_count,
       COALESCE(op.total_open_amount, 0) as total_open_amount,
-      CASE WHEN m.actualExit IS NOT NULL THEN 1 ELSE 0 END as has_actual_exit,
-      CASE WHEN m.expectedExitDate IS NOT NULL THEN 1 ELSE 0 END as has_expected_exit,
-      CASE WHEN m.autoExit IS NOT NULL THEN 1 ELSE 0 END as has_auto_exit,
+      CASE WHEN m.actualExit IS NOT NULL AND m.actualExit != '' THEN 1 ELSE 0 END as has_actual_exit,
+      CASE WHEN m.expectedExitDate IS NOT NULL AND m.expectedExitDate != '' THEN 1 ELSE 0 END as has_expected_exit,
+      CASE WHEN m.autoExit IS NOT NULL AND m.autoExit != '' THEN 1 ELSE 0 END as has_auto_exit,
       CASE WHEN m.email IS NOT NULL AND m.email != '' THEN 1 ELSE 0 END as has_email
     FROM members m
     LEFT JOIN (
@@ -168,21 +168,21 @@ router.get("/filtered", (req, res) => {
   }
 
   if (hasActualExit === 'true') {
-    sql += " AND m.actualExit IS NOT NULL";
+    sql += " AND m.actualExit IS NOT NULL AND m.actualExit != ''";
   } else if (hasActualExit === 'false') {
-    sql += " AND m.actualExit IS NULL";
+    sql += " AND (m.actualExit IS NULL OR m.actualExit = '')";
   }
 
   if (hasExpectedExit === 'true') {
-    sql += " AND m.expectedExitDate IS NOT NULL";
+    sql += " AND m.expectedExitDate IS NOT NULL AND m.expectedExitDate != ''";
   } else if (hasExpectedExit === 'false') {
-    sql += " AND m.expectedExitDate IS NULL";
+    sql += " AND (m.expectedExitDate IS NULL OR m.expectedExitDate = '')";
   }
 
   if (hasAutoExit === 'true') {
-    sql += " AND m.autoExit IS NOT NULL";
+    sql += " AND m.autoExit IS NOT NULL AND m.autoExit != ''";
   } else if (hasAutoExit === 'false') {
-    sql += " AND m.autoExit IS NULL";
+    sql += " AND (m.autoExit IS NULL OR m.autoExit = '')";
   }
 
   if (hasEmail === 'true') {
@@ -283,21 +283,21 @@ router.get("/export", (req, res) => {
   }
 
   if (hasActualExit === 'true') {
-    sql += " AND m.actualExit IS NOT NULL";
+    sql += " AND m.actualExit IS NOT NULL AND m.actualExit != ''";
   } else if (hasActualExit === 'false') {
-    sql += " AND m.actualExit IS NULL";
+    sql += " AND (m.actualExit IS NULL OR m.actualExit = '')";
   }
 
   if (hasExpectedExit === 'true') {
-    sql += " AND m.expectedExitDate IS NOT NULL";
+    sql += " AND m.expectedExitDate IS NOT NULL AND m.expectedExitDate != ''";
   } else if (hasExpectedExit === 'false') {
-    sql += " AND m.expectedExitDate IS NULL";
+    sql += " AND (m.expectedExitDate IS NULL OR m.expectedExitDate = '')";
   }
 
   if (hasAutoExit === 'true') {
-    sql += " AND m.autoExit IS NOT NULL";
+    sql += " AND m.autoExit IS NOT NULL AND m.autoExit != ''";
   } else if (hasAutoExit === 'false') {
-    sql += " AND m.autoExit IS NULL";
+    sql += " AND (m.autoExit IS NULL OR m.autoExit = '')";
   }
 
   if (hasEmail === 'true') {
