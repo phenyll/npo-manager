@@ -69,6 +69,101 @@ router.get("/stats", (req, res) => {
     });
 });
 
+// Neue Route: Jährliche Mitgliederbewegungen für die letzten 3 Jahre + aktuelles Jahr + 3 Jahre Zukunft
+router.get("/yearly-movements", (req, res) => {
+    const currentYear = new Date().getFullYear();
+    
+    const sql = `
+        SELECT 
+            jahre.jahr,
+            COALESCE(zugaenge.count, 0) as zugaenge,
+            COALESCE(abgaenge.count, 0) as abgaenge,
+            COALESCE(erwartete_abgaenge.count, 0) as erwarteteAbgaenge,
+            (
+                SELECT COUNT(*) 
+                FROM members 
+                WHERE (joinDate IS NULL OR joinDate = '' OR joinDate <= (jahre.jahr || '-12-31'))
+                  AND (
+                    -- Für vergangene/aktuelle Jahre: nur tatsächliche Austritte berücksichtigen
+                    (jahre.jahr <= ? AND (actualExit IS NULL OR actualExit = '' OR actualExit > (jahre.jahr || '-12-31')))
+                    OR
+                    -- Für Zukunftsjahre: sowohl tatsächliche als auch erwartete Austritte berücksichtigen
+                    (jahre.jahr > ? AND (
+                      (actualExit IS NULL OR actualExit = '' OR actualExit > (jahre.jahr || '-12-31'))
+                      AND (expectedExitDate IS NULL OR expectedExitDate = '' OR expectedExitDate > (jahre.jahr || '-12-31'))
+                    ))
+                  )
+            ) as standJahresende
+        FROM (
+            SELECT ? as jahr UNION ALL
+            SELECT ? as jahr UNION ALL
+            SELECT ? as jahr UNION ALL
+            SELECT ? as jahr UNION ALL
+            SELECT ? as jahr UNION ALL
+            SELECT ? as jahr UNION ALL
+            SELECT ? as jahr
+        ) jahre
+        LEFT JOIN (
+            SELECT 
+                strftime('%Y', joinDate) as jahr,
+                COUNT(*) as count
+            FROM members 
+            WHERE joinDate IS NOT NULL AND joinDate != ''
+            GROUP BY strftime('%Y', joinDate)
+        ) zugaenge ON CAST(jahre.jahr as TEXT) = zugaenge.jahr
+        LEFT JOIN (
+            SELECT 
+                strftime('%Y', actualExit) as jahr,
+                COUNT(*) as count
+            FROM members 
+            WHERE actualExit IS NOT NULL AND actualExit != ''
+            GROUP BY strftime('%Y', actualExit)
+        ) abgaenge ON CAST(jahre.jahr as TEXT) = abgaenge.jahr
+        LEFT JOIN (
+            SELECT 
+                strftime('%Y', expectedExitDate) as jahr,
+                COUNT(*) as count
+            FROM members 
+            WHERE expectedExitDate IS NOT NULL AND expectedExitDate != ''
+              AND (actualExit IS NULL OR actualExit = '')
+            GROUP BY strftime('%Y', expectedExitDate)
+        ) erwartete_abgaenge ON CAST(jahre.jahr as TEXT) = erwartete_abgaenge.jahr
+        ORDER BY jahre.jahr
+    `;
+    
+    const params = [
+        currentYear, currentYear, // für die standJahresende Berechnung
+        currentYear - 3, 
+        currentYear - 2, 
+        currentYear - 1, 
+        currentYear,
+        currentYear + 1,
+        currentYear + 2,
+        currentYear + 3
+    ];
+    
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error("Fehler bei yearly-movements:", err.message);
+            return res.status(500).send(err.message);
+        }
+        
+        const movements = rows.map(row => ({
+            jahr: parseInt(row.jahr),
+            zugaenge: row.zugaenge,
+            abgaenge: row.abgaenge,
+            erwarteteAbgaenge: row.erwarteteAbgaenge,
+            standJahresende: row.standJahresende
+        }));
+        
+        res.json({
+            movements,
+            generatedAt: new Date().toISOString(),
+            referenceDate: new Date().toISOString().split('T')[0]
+        });
+    });
+});
+
 router.get("/", (req, res) => {
   let sql = `
     SELECT 

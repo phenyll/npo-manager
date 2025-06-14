@@ -27,6 +27,23 @@
         </div>
     </div>
 
+    <div class="row mt-4">
+        <div class="col-12">
+            <h2>Jährliche Mitgliederbewegungen</h2>
+            <div class="card">
+                <div class="card-body">
+                    <div id="yearlyMovementsTable">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Laden...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <a href="/main" class="btn btn-secondary mt-3">Zurück zur Hauptseite</a>
 </div>
 
@@ -48,6 +65,62 @@
         document.getElementById('percentagePaidMembers').innerText = `Prozentsatz der zahlenden Mitglieder: ${paymentsData.percentagePaidMembers}%`;
         document.getElementById('totalOutstandingAmount').innerText = `Ausstehende Zahlungen gesamt: ${paymentsData.totalOutstandingAmount} €`;
         document.getElementById('membersWithOutstandingPayments').innerText = `Mitglieder mit ausstehenden Zahlungen: ${paymentsData.membersWithOutstandingPayments}`;
+
+        // Jährliche Mitgliederbewegungen abrufen
+        await loadYearlyMovements();
+    }
+
+    async function loadYearlyMovements() {
+        try {
+            const response = await fetch('/members/yearly-movements');
+            const data = await response.json();
+            
+            const tableContainer = document.getElementById('yearlyMovementsTable');
+            
+            if (data.movements && data.movements.length > 0) {
+                const table = `
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col">Jahr</th>
+                                <th scope="col">Zugänge</th>
+                                <th scope="col">Abgänge</th>
+                                <th scope="col">Erwartete Abgänge</th>
+                                <th scope="col">Stand zum 31.12.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.movements.map(movement => {
+                                const currentYear = new Date().getFullYear();
+                                const isFuture = movement.jahr > currentYear;
+                                const rowClass = isFuture ? 'table-info' : '';
+                                
+                                return `
+                                <tr class="${rowClass}">
+                                    <td><strong>${movement.jahr}${isFuture ? ' *' : ''}</strong></td>
+                                    <td class="text-success">+${movement.zugaenge}</td>
+                                    <td class="text-danger">-${movement.abgaenge}</td>
+                                    <td class="text-warning">${movement.erwarteteAbgaenge > 0 ? `~${movement.erwarteteAbgaenge}` : '-'}</td>
+                                    <td class="text-primary"><strong>${movement.standJahresende}</strong></td>
+                                </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    <small class="text-muted">
+                        Datenstand: ${new Date(data.referenceDate).toLocaleDateString('de-DE')}<br>
+                        * Zukunftsjahre (nur erwartete Abgänge verfügbar)
+                    </small>
+                `;
+                tableContainer.innerHTML = table;
+            } else {
+                tableContainer.innerHTML = '<p class="text-muted">Keine Daten verfügbar</p>';
+            }
+        } catch (error) {
+            console.error('Fehler beim Laden der jährlichen Bewegungen:', error);
+            document.getElementById('yearlyMovementsTable').innerHTML = 
+                '<p class="text-danger">Fehler beim Laden der Daten</p>';
+        }
     }
 
     loadStatistics();
