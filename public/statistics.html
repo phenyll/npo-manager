@@ -53,8 +53,8 @@
         const membersResponse = await fetch('/members/stats');
         const membersData = await membersResponse.json();
 
-        document.getElementById('totalMembers').innerText = `Gesamte Mitglieder: ${membersData.totalMembers}`;
-        document.getElementById('newMembersThisYear').innerText = `Neue Mitglieder dieses Jahr: ${membersData.newMembersThisYear}`;
+        document.getElementById('totalMembers').innerText = `Gesamte Mitglieder-Datensätze: ${membersData.totalMembers}`;
+        //document.getElementById('newMembersThisYear').innerText = `Neue Mitglieder dieses Jahr: ${membersData.newMembersThisYear}`;
 
         // Beitragsstatistiken abrufen
         const paymentsResponse = await fetch('/payments/stats');
