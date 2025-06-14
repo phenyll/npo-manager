@@ -313,6 +313,77 @@
           </div>
         </div>
       </form>
+
+      <!-- Dokumentenverwaltung -->
+      <div class="mt-4">
+        <h4>📁 Dokumente</h4>
+        <div class="card">
+          <div class="card-body">
+            <!-- Dokument-Upload -->
+            <form id="documentUploadForm" enctype="multipart/form-data" class="mb-3">
+              <div class="row">
+                <div class="col-md-4">
+                  <label class="form-label">Datei auswählen</label>
+                  <input type="file" id="documentFile" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp" required>
+                  <small class="text-muted">PDF, JPG, PNG, GIF, BMP, WebP erlaubt (max. 10MB)</small>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Beschreibung</label>
+                  <input type="text" id="documentDescription" class="form-control" placeholder="z.B. Anmeldeformular, Austrittserklärung...">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">&nbsp;</label>
+                  <button type="submit" class="btn btn-success d-block">📤 Hochladen</button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Dokumente-Liste -->
+            <div id="documentsList">
+              <div class="text-muted">Lade Dokumente...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notizenverwaltung -->
+      <div class="mt-4">
+        <h4>📝 Notizen-Historie</h4>
+        <div class="card">
+          <div class="card-body">
+            <!-- Neue Notiz -->
+            <form id="noteForm" class="mb-3">
+              <div class="row">
+                <div class="col-md-3">
+                  <label class="form-label">Kategorie</label>
+                  <select id="noteType" class="form-control">
+                    <option value="allgemein">📋 Allgemein</option>
+                    <option value="eintritt">➡️ Eintritt</option>
+                    <option value="austritt">⬅️ Austritt</option>
+                    <option value="dokument">📄 Dokument</option>
+                    <option value="antrag">📋 Antrag</option>
+                    <option value="zahlung">💰 Zahlung</option>
+                    <option value="korrespondenz">✉️ Korrespondenz</option>
+                  </select>
+                </div>
+                <div class="col-md-7">
+                  <label class="form-label">Notiz</label>
+                  <textarea id="noteText" class="form-control" rows="2" placeholder="Notiz eingeben..." required></textarea>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">&nbsp;</label>
+                  <button type="submit" class="btn btn-primary d-block">➕ Hinzufügen</button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Notizen-Liste -->
+            <div id="notesList">
+              <div class="text-muted">Lade Notizen...</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
   

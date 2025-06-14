@@ -18,6 +18,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/static', express.static(path.join(__dirname, '../static'), { extensions: ['html', 'js', 'css']}));
+// Statische Auslieferung für Mitglieder-Dokumente (geschützt durch Authentifizierung)
+app.use('/uploads/members', express.static(path.join(__dirname, '../uploads/members')));
 app.use(logRequest);
 
 // Middleware für Datei-Uploads

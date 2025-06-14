@@ -692,6 +692,10 @@ function viewMemberDetails(id) {
   
         // Speichern der ID für spätere Updates
         document.getElementById("memberForm").dataset.memberId = id;
+        
+        // Dokumente und Notizen laden
+        loadMemberDocuments(id);
+        loadMemberNotes(id);
       });
   }
 
@@ -938,4 +942,317 @@ function resetFilters() {
         }
     });
     loadMembers(); // Tabelle neu laden ohne Filter
+}
+
+// ===== DOKUMENTENVERWALTUNG =====
+
+// Dokumente für ein Mitglied laden
+function loadMemberDocuments(memberId) {
+    fetch(`/members/${memberId}/documents`)
+        .then(response => response.json())
+        .then(documents => {
+            const documentsList = document.getElementById('documentsList');
+            
+            if (documents.length === 0) {
+                documentsList.innerHTML = '<div class="text-muted">Keine Dokumente vorhanden</div>';
+                return;
+            }
+            
+            documentsList.innerHTML = documents.map(doc => `
+                <div class="border-bottom pb-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>${doc.original_filename}</strong>
+                            ${doc.description ? `<br><small class="text-muted">${doc.description}</small>` : ''}
+                            <br><small class="text-muted">
+                                Hochgeladen: ${formatDate(doc.upload_date)} von ${doc.uploaded_by}
+                                | Größe: ${(doc.file_size / 1024).toFixed(1)} KB
+                            </small>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="downloadDocument(${memberId}, ${doc.id})">
+                                📥 Download
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteDocument(${memberId}, ${doc.id})">
+                                🗑️ Löschen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Dokumente:', error);
+            document.getElementById('documentsList').innerHTML = '<div class="text-danger">Fehler beim Laden der Dokumente</div>';
+        });
+}
+
+// Dokument hochladen
+document.getElementById('documentUploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const memberId = document.getElementById("memberForm").dataset.memberId;
+    const fileInput = document.getElementById('documentFile');
+    const description = document.getElementById('documentDescription').value;
+    
+    if (!fileInput.files[0]) {
+        alert('Bitte wählen Sie eine Datei aus');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('document', fileInput.files[0]);
+    formData.append('description', description);
+    
+    fetch(`/members/${memberId}/documents`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        }
+        throw new Error('Upload fehlgeschlagen');
+    })
+    .then(data => {
+        alert('Dokument erfolgreich hochgeladen!');
+        fileInput.value = '';
+        document.getElementById('documentDescription').value = '';
+        loadMemberDocuments(memberId);
+    })
+    .catch(error => {
+        console.error('Fehler beim Upload:', error);
+        alert('Fehler beim Hochladen des Dokuments: ' + error.message);
+    });
+});
+
+// Dokument herunterladen
+function downloadDocument(memberId, docId) {
+    window.open(`/members/${memberId}/documents/${docId}/download`, '_blank');
+}
+
+// Dokument löschen
+function deleteDocument(memberId, docId) {
+    if (!confirm('Möchten Sie dieses Dokument wirklich löschen?')) {
+        return;
+    }
+    
+    fetch(`/members/${memberId}/documents/${docId}`, {
+        method: 'DELETE'
+    })
+    .then(response => {
+        if (response.ok) {
+            alert('Dokument erfolgreich gelöscht!');
+            loadMemberDocuments(memberId);
+        } else {
+            throw new Error('Löschen fehlgeschlagen');
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Löschen:', error);
+        alert('Fehler beim Löschen des Dokuments: ' + error.message);
+    });
+}
+
+// ===== NOTIZENVERWALTUNG =====
+
+// Notizen für ein Mitglied laden
+function loadMemberNotes(memberId) {
+    fetch(`/members/${memberId}/notes`)
+        .then(response => response.json())
+        .then(notes => {
+            const notesList = document.getElementById('notesList');
+            
+            if (notes.length === 0) {
+                notesList.innerHTML = '<div class="text-muted">Keine Notizen vorhanden</div>';
+                return;
+            }
+            
+            notesList.innerHTML = notes.map(note => `
+                <div class="border-bottom pb-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge bg-secondary me-2">${getNoteTypeLabel(note.note_type)}</span>
+                                <small class="text-muted">
+                                    ${formatDateTime(note.created_date)} von ${note.created_by}
+                                </small>
+                            </div>
+                            <div class="note-text" id="noteText-${note.id}">
+                                ${note.note_text.replace(/\n/g, '<br>')}
+                            </div>
+                            <div class="note-edit d-none" id="noteEdit-${note.id}">
+                                <select class="form-control mb-2" id="editNoteType-${note.id}">
+                                    <option value="allgemein" ${note.note_type === 'allgemein' ? 'selected' : ''}>Allgemein</option>
+                                    <option value="eintritt" ${note.note_type === 'eintritt' ? 'selected' : ''}>Eintritt</option>
+                                    <option value="austritt" ${note.note_type === 'austritt' ? 'selected' : ''}>Austritt</option>
+                                    <option value="dokument" ${note.note_type === 'dokument' ? 'selected' : ''}>Dokument</option>
+                                    <option value="antrag" ${note.note_type === 'antrag' ? 'selected' : ''}>Antrag</option>
+                                    <option value="zahlung" ${note.note_type === 'zahlung' ? 'selected' : ''}>Zahlung</option>
+                                    <option value="korrespondenz" ${note.note_type === 'korrespondenz' ? 'selected' : ''}>Korrespondenz</option>
+                                </select>
+                                <textarea class="form-control mb-2" id="editNoteText-${note.id}" rows="3">${note.note_text}</textarea>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-success" onclick="saveNoteEdit(${memberId}, ${note.id})">Speichern</button>
+                                    <button class="btn btn-sm btn-secondary" onclick="cancelNoteEdit(${note.id})">Abbrechen</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="btn-group ms-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editNote(${note.id})">
+                                ✏️ Bearbeiten
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteNote(${memberId}, ${note.id})">
+                                🗑️ Löschen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Notizen:', error);
+            document.getElementById('notesList').innerHTML = '<div class="text-danger">Fehler beim Laden der Notizen</div>';
+        });
+}
+
+// Notiz-Typ-Label abrufen
+function getNoteTypeLabel(type) {
+    const labels = {
+        'allgemein': '📋 Allgemein',
+        'eintritt': '➡️ Eintritt',
+        'austritt': '⬅️ Austritt',
+        'dokument': '📄 Dokument',
+        'antrag': '📋 Antrag',
+        'zahlung': '💰 Zahlung',
+        'korrespondenz': '✉️ Korrespondenz'
+    };
+    return labels[type] || '📋 ' + type;
+}
+
+// Datum und Zeit formatieren
+function formatDateTime(dateTimeString) {
+    if (!dateTimeString) return '';
+    const date = new Date(dateTimeString);
+    if (isNaN(date)) return dateTimeString;
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+}
+
+// Neue Notiz hinzufügen
+document.getElementById('noteForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const memberId = document.getElementById("memberForm").dataset.memberId;
+    const noteText = document.getElementById('noteText').value;
+    const noteType = document.getElementById('noteType').value;
+    
+    if (!noteText.trim()) {
+        alert('Bitte geben Sie eine Notiz ein');
+        return;
+    }
+    
+    fetch(`/members/${memberId}/notes`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            noteText: noteText.trim(),
+            noteType: noteType
+        })
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        }
+        throw new Error('Erstellen fehlgeschlagen');
+    })
+    .then(data => {
+        alert('Notiz erfolgreich hinzugefügt!');
+        document.getElementById('noteText').value = '';
+        document.getElementById('noteType').value = 'allgemein';
+        loadMemberNotes(memberId);
+    })
+    .catch(error => {
+        console.error('Fehler beim Erstellen der Notiz:', error);
+        alert('Fehler beim Erstellen der Notiz: ' + error.message);
+    });
+});
+
+// Notiz bearbeiten
+function editNote(noteId) {
+    document.getElementById(`noteText-${noteId}`).classList.add('d-none');
+    document.getElementById(`noteEdit-${noteId}`).classList.remove('d-none');
+}
+
+// Notiz-Bearbeitung abbrechen
+function cancelNoteEdit(noteId) {
+    document.getElementById(`noteText-${noteId}`).classList.remove('d-none');
+    document.getElementById(`noteEdit-${noteId}`).classList.add('d-none');
+}
+
+// Notiz-Bearbeitung speichern
+function saveNoteEdit(memberId, noteId) {
+    const noteText = document.getElementById(`editNoteText-${noteId}`).value;
+    const noteType = document.getElementById(`editNoteType-${noteId}`).value;
+    
+    if (!noteText.trim()) {
+        alert('Bitte geben Sie eine Notiz ein');
+        return;
+    }
+    
+    fetch(`/members/${memberId}/notes/${noteId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            noteText: noteText.trim(),
+            noteType: noteType
+        })
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        }
+        throw new Error('Aktualisierung fehlgeschlagen');
+    })
+    .then(data => {
+        alert('Notiz erfolgreich aktualisiert!');
+        loadMemberNotes(memberId);
+    })
+    .catch(error => {
+        console.error('Fehler beim Aktualisieren der Notiz:', error);
+        alert('Fehler beim Aktualisieren der Notiz: ' + error.message);
+    });
+}
+
+// Notiz löschen
+function deleteNote(memberId, noteId) {
+    if (!confirm('Möchten Sie diese Notiz wirklich löschen?')) {
+        return;
+    }
+    
+    fetch(`/members/${memberId}/notes/${noteId}`, {
+        method: 'DELETE'
+    })
+    .then(response => {
+        if (response.ok) {
+            alert('Notiz erfolgreich gelöscht!');
+            loadMemberNotes(memberId);
+        } else {
+            throw new Error('Löschen fehlgeschlagen');
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Löschen:', error);
+        alert('Fehler beim Löschen der Notiz: ' + error.message);
+    });
 }

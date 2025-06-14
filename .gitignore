@@ -3,3 +3,4 @@ sessions/
 .DS_Store
 /server/database/club.db
 cookies.txt
+uploads/

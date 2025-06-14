@@ -81,6 +81,35 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     )
                 `);
 
+                // Tabelle für Mitglieder-Dokumente
+                await runAsync(`
+                    CREATE TABLE IF NOT EXISTS member_documents (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        member_id INTEGER NOT NULL,
+                        filename TEXT NOT NULL,
+                        original_filename TEXT NOT NULL,
+                        file_type TEXT NOT NULL,
+                        file_size INTEGER NOT NULL,
+                        upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        uploaded_by TEXT,
+                        description TEXT,
+                        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+                    )
+                `);
+
+                // Tabelle für Mitglieder-Notizen
+                await runAsync(`
+                    CREATE TABLE IF NOT EXISTS member_notes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        member_id INTEGER NOT NULL,
+                        note_text TEXT NOT NULL,
+                        note_type TEXT DEFAULT 'allgemein',
+                        created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        created_by TEXT,
+                        FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+                    )
+                `);
+
                 await runAsync(`
                     CREATE TABLE IF NOT EXISTS users (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,

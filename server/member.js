@@ -9,6 +9,42 @@ const fs = require('fs');
 
 const upload = multer({ dest: 'uploads/' });
 
+// Spezielle Multer-Konfiguration für Mitglieder-Dokumente
+const documentStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const memberDocDir = path.join(__dirname, '../uploads/members');
+    // Stelle sicher, dass das Verzeichnis existiert
+    if (!fs.existsSync(memberDocDir)) {
+      fs.mkdirSync(memberDocDir, { recursive: true });
+    }
+    cb(null, memberDocDir);
+  },
+  filename: function (req, file, cb) {
+    // Eindeutiger Dateiname mit Zeitstempel
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const uploadDocument = multer({ 
+  storage: documentStorage,
+  fileFilter: function (req, file, cb) {
+    // Nur PDF und Bilder erlauben
+    const allowedTypes = /jpeg|jpg|png|pdf|gif|bmp|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Nur Bilder (JPEG, PNG, GIF, BMP, WebP) und PDF-Dateien sind erlaubt!'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB Limit
+  }
+});
+
 router.get("/stats", (req, res) => {
     const currentYear = new Date().getFullYear();
 
@@ -537,5 +573,214 @@ function convertExcelDate(excelDate) {
     return null;
   }
 }
+
+// ===== DOKUMENTENVERWALTUNG =====
+
+// Dokument hochladen für ein Mitglied
+router.post("/:id/documents", uploadDocument.single('document'), (req, res) => {
+  const memberId = req.params.id;
+  const { description } = req.body;
+  
+  if (!req.file) {
+    return res.status(400).send("Keine Datei hochgeladen");
+  }
+
+  const { filename, originalname, mimetype, size } = req.file;
+  const uploadedBy = req.session.user || 'unbekannt';
+
+  db.run(
+    `INSERT INTO member_documents (member_id, filename, original_filename, file_type, file_size, uploaded_by, description)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [memberId, filename, originalname, mimetype, size, uploadedBy, description || ''],
+    function (err) {
+      if (err) {
+        console.error("Fehler beim Speichern des Dokuments:", err.message);
+        return res.status(500).send(err.message);
+      }
+      res.status(201).json({ 
+        id: this.lastID,
+        message: "Dokument erfolgreich hochgeladen"
+      });
+    }
+  );
+});
+
+// Dokumente für ein Mitglied abrufen
+router.get("/:id/documents", (req, res) => {
+  const memberId = req.params.id;
+  
+  db.all(
+    `SELECT id, filename, original_filename, file_type, file_size, upload_date, uploaded_by, description
+     FROM member_documents 
+     WHERE member_id = ?
+     ORDER BY upload_date DESC`,
+    [memberId],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      res.json(rows);
+    }
+  );
+});
+
+// Einzelnes Dokument herunterladen
+router.get("/:id/documents/:docId/download", (req, res) => {
+  const { id: memberId, docId } = req.params;
+  
+  db.get(
+    `SELECT filename, original_filename, file_type 
+     FROM member_documents 
+     WHERE id = ? AND member_id = ?`,
+    [docId, memberId],
+    (err, row) => {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      if (!row) {
+        return res.status(404).send("Dokument nicht gefunden");
+      }
+      
+      const filePath = path.join(__dirname, '../uploads/members', row.filename);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).send("Datei nicht gefunden");
+      }
+      
+      res.setHeader('Content-Disposition', `attachment; filename="${row.original_filename}"`);
+      res.setHeader('Content-Type', row.file_type);
+      res.sendFile(filePath);
+    }
+  );
+});
+
+// Dokument löschen
+router.delete("/:id/documents/:docId", (req, res) => {
+  const { id: memberId, docId } = req.params;
+  
+  // Erst Dateiinformationen abrufen
+  db.get(
+    `SELECT filename FROM member_documents WHERE id = ? AND member_id = ?`,
+    [docId, memberId],
+    (err, row) => {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      if (!row) {
+        return res.status(404).send("Dokument nicht gefunden");
+      }
+      
+      // Datei aus Dateisystem löschen
+      const filePath = path.join(__dirname, '../uploads/members', row.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      // Datenbankeinträg löschen
+      db.run(
+        `DELETE FROM member_documents WHERE id = ? AND member_id = ?`,
+        [docId, memberId],
+        function (err) {
+          if (err) {
+            return res.status(500).send(err.message);
+          }
+          res.json({ message: "Dokument erfolgreich gelöscht" });
+        }
+      );
+    }
+  );
+});
+
+// ===== NOTIZENVERWALTUNG =====
+
+// Notiz für ein Mitglied erstellen
+router.post("/:id/notes", (req, res) => {
+  const memberId = req.params.id;
+  const { noteText, noteType } = req.body;
+  const createdBy = req.session.user || 'unbekannt';
+  
+  if (!noteText || noteText.trim() === '') {
+    return res.status(400).send("Notiztext ist erforderlich");
+  }
+
+  db.run(
+    `INSERT INTO member_notes (member_id, note_text, note_type, created_by)
+     VALUES (?, ?, ?, ?)`,
+    [memberId, noteText.trim(), noteType || 'allgemein', createdBy],
+    function (err) {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      res.status(201).json({ 
+        id: this.lastID,
+        message: "Notiz erfolgreich erstellt"
+      });
+    }
+  );
+});
+
+// Notizen für ein Mitglied abrufen
+router.get("/:id/notes", (req, res) => {
+  const memberId = req.params.id;
+  
+  db.all(
+    `SELECT id, note_text, note_type, created_date, created_by
+     FROM member_notes 
+     WHERE member_id = ?
+     ORDER BY created_date DESC`,
+    [memberId],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      res.json(rows);
+    }
+  );
+});
+
+// Notiz bearbeiten
+router.put("/:id/notes/:noteId", (req, res) => {
+  const { id: memberId, noteId } = req.params;
+  const { noteText, noteType } = req.body;
+  
+  if (!noteText || noteText.trim() === '') {
+    return res.status(400).send("Notiztext ist erforderlich");
+  }
+
+  db.run(
+    `UPDATE member_notes 
+     SET note_text = ?, note_type = ?
+     WHERE id = ? AND member_id = ?`,
+    [noteText.trim(), noteType || 'allgemein', noteId, memberId],
+    function (err) {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      if (this.changes === 0) {
+        return res.status(404).send("Notiz nicht gefunden");
+      }
+      res.json({ message: "Notiz erfolgreich aktualisiert" });
+    }
+  );
+});
+
+// Notiz löschen
+router.delete("/:id/notes/:noteId", (req, res) => {
+  const { id: memberId, noteId } = req.params;
+  
+  db.run(
+    `DELETE FROM member_notes WHERE id = ? AND member_id = ?`,
+    [noteId, memberId],
+    function (err) {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      if (this.changes === 0) {
+        return res.status(404).send("Notiz nicht gefunden");
+      }
+      res.json({ message: "Notiz erfolgreich gelöscht" });
+    }
+  );
+});
 
 module.exports = {router, convertExcelDate};
