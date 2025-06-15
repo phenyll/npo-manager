@@ -79,6 +79,7 @@ router.get("/yearly-movements", (req, res) => {
             COALESCE(zugaenge.count, 0) as zugaenge,
             COALESCE(abgaenge.count, 0) as abgaenge,
             COALESCE(erwartete_abgaenge.count, 0) as erwarteteAbgaenge,
+            COALESCE(zahlungseingaenge.total_amount, 0) as zahlungseingaenge,
             (
                 SELECT COUNT(*) 
                 FROM members 
@@ -128,6 +129,15 @@ router.get("/yearly-movements", (req, res) => {
               AND (actualExit IS NULL OR actualExit = '')
             GROUP BY strftime('%Y', expectedExitDate)
         ) erwartete_abgaenge ON CAST(jahre.jahr as TEXT) = erwartete_abgaenge.jahr
+        LEFT JOIN (
+            SELECT 
+                strftime('%Y', paymentDate) as jahr,
+                SUM(amount) as total_amount
+            FROM payments 
+            WHERE paymentDate IS NOT NULL AND paymentDate != ''
+              AND status = 'gezahlt'
+            GROUP BY strftime('%Y', paymentDate)
+        ) zahlungseingaenge ON CAST(jahre.jahr as TEXT) = zahlungseingaenge.jahr
         ORDER BY jahre.jahr
     `;
     
@@ -153,6 +163,7 @@ router.get("/yearly-movements", (req, res) => {
             zugaenge: row.zugaenge,
             abgaenge: row.abgaenge,
             erwarteteAbgaenge: row.erwarteteAbgaenge,
+            zahlungseingaenge: parseFloat(row.zahlungseingaenge) || 0,
             standJahresende: row.standJahresende
         }));
         
