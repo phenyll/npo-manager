@@ -86,7 +86,7 @@
                                 <th scope="col">Zugänge</th>
                                 <th scope="col">Abgänge</th>
                                 <th scope="col">Erwartete Abgänge</th>
-                                <th scope="col">Zahlungseingänge</th>
+                                <th scope="col">Zahlungseingänge / -ausstände</th>
                                 <th scope="col">Stand zum 31.12.</th>
                             </tr>
                         </thead>
@@ -102,7 +102,14 @@
                                     <td class="text-success">+${movement.zugaenge}</td>
                                     <td class="text-danger">-${movement.abgaenge}</td>
                                     <td class="text-warning">${movement.erwarteteAbgaenge > 0 ? `~${movement.erwarteteAbgaenge}` : '-'}</td>
-                                    <td class="text-info">${movement.zahlungseingaenge > 0 ? `${movement.zahlungseingaenge.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})} €` : '-'}</td>
+                                    <td class="text-info">
+                                        ${movement.zahlungseingaenge > 0 || movement.offeneZahlungen > 0 ? `
+                                            <div class="d-flex flex-column">
+                                                ${movement.zahlungseingaenge > 0 ? `<span class="text-success">+${movement.zahlungseingaenge.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})} €</span>` : ''}
+                                                ${movement.offeneZahlungen > 0 ? `<span class="text-danger">-${movement.offeneZahlungen.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2})} €</span>` : ''}
+                                            </div>
+                                        ` : '-'}
+                                    </td>
                                     <td class="text-primary"><strong>${movement.standJahresende}</strong></td>
                                 </tr>
                                 `;
