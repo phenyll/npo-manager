@@ -122,7 +122,44 @@ ${organization.address}</p>
   }
 }
 
+// Mahnung per E-Mail versenden
+async function sendDunningEmail(member, organization, subject, mailContent) {
+  try {
+    if (!transporter) {
+      await initializeTransporter();
+      if (!transporter) {
+        throw new Error("E-Mail-Transporter nicht konfiguriert");
+      }
+    }
+
+    if (!member.email) {
+      throw new Error("Mitglied hat keine E-Mail-Adresse");
+    }
+
+    // E-Mail versenden
+    const info = await transporter.sendMail({
+      from: `"${organization?.name || 'Schulförderverein'} - ${organization?.name_kassenwart || 'Kassenwart'}" <${organization?.email || 'noreply@verein.de'}>`,
+      to: member.email,
+      subject: subject,
+      html: mailContent,
+      text: mailContent.replace(/<[^>]*>/g, '')
+    });
+
+    console.log(`Mahnung per E-Mail versendet an ${member.email}: ${info.messageId}`);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      recipient: member.email
+    };
+  } catch (error) {
+    console.error("Fehler beim Versenden der Mahnung:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   initializeTransporter,
-  sendReminderEmail
+  sendReminderEmail,
+  sendDunningEmail
 };

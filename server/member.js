@@ -899,4 +899,316 @@ router.delete("/:id/notes/:noteId", (req, res) => {
   );
 });
 
+// ===== MAHNUNG FÜR MITGLIEDER =====
+
+// Alle offenen Beiträge eines Mitglieds abrufen für Mahnung
+router.get("/:id/open-payments", (req, res) => {
+  const memberId = req.params.id;
+  
+  db.all(
+    `SELECT p.*, 
+            COALESCE(rh.reminder_count, 0) as reminder_count,
+            rh.last_reminder_date
+     FROM payments p
+     LEFT JOIN (
+       SELECT payment_id, 
+              COUNT(*) as reminder_count,
+              MAX(reminder_date) as last_reminder_date
+       FROM reminder_history 
+       GROUP BY payment_id
+     ) rh ON p.id = rh.payment_id
+     WHERE p.memberId = ? AND p.status = 'offen'
+     ORDER BY p.year ASC`,
+    [memberId],
+    (err, rows) => {
+      if (err) {
+        console.error("Fehler beim Abrufen der offenen Beiträge:", err.message);
+        return res.status(500).send(err.message);
+      }
+      res.json({ openPayments: rows });
+    }
+  );
+});
+
+// Mahnung für Mitglied erstellen
+router.post("/:id/dunning", (req, res) => {
+  const memberId = req.params.id;
+  const { announceExclusion, mailContent, recipient, totalAmount, paymentsCount } = req.body;
+  const createdBy = req.session?.user?.username || 'System';
+  const currentDate = new Date().toISOString().split('T')[0];
+  
+  // Aktuelles Jahr für 30.08.
+  const currentYear = new Date().getFullYear();
+  const exclusionDate = `${currentYear}-08-30`;
+  
+  db.serialize(() => {
+    // SQLite Transaction mit run-Kommandos starten
+    db.run("BEGIN TRANSACTION", (err) => {
+      if (err) {
+        console.error("Fehler beim Starten der Transaktion:", err.message);
+        return res.status(500).send(err.message);
+      }
+      
+      // 1. Alle offenen Beiträge des Mitglieds abrufen
+      db.all(
+        "SELECT * FROM payments WHERE memberId = ? AND status = 'offen'",
+        [memberId],
+        (err, payments) => {
+          if (err) {
+            db.run("ROLLBACK");
+            return res.status(500).send(err.message);
+          }
+          
+          if (payments.length === 0) {
+            db.run("ROLLBACK");
+            return res.status(400).json({
+              success: false,
+              message: "Mitglied hat keine offenen Beiträge"
+            });
+          }
+          
+          // 2. Mahnung zu allen offenen Beiträgen hinzufügen
+          const stmt = db.prepare(
+            "INSERT INTO reminder_history (payment_id, reminder_date, reminder_method, reminder_notes, created_by) VALUES (?, ?, ?, ?, ?)"
+          );
+          
+          let insertedCount = 0;
+          let hasError = false;
+          
+          payments.forEach(payment => {
+            stmt.run(
+              payment.id,
+              currentDate,
+              "Email",
+              announceExclusion ? "Zahlungserinnerung mit Ausschluss-Ankündigung" : "Zahlungserinnerung",
+              createdBy,
+              function(err) {
+                if (err && !hasError) {
+                  hasError = true;
+                  stmt.finalize();
+                  db.run("ROLLBACK");
+                  return res.status(500).send(err.message);
+                }
+                
+                insertedCount++;
+                
+                // Wenn alle Inserts abgeschlossen sind
+                if (insertedCount === payments.length && !hasError) {
+                  stmt.finalize((err) => {
+                    if (err) {
+                      db.run("ROLLBACK");
+                      return res.status(500).send(err.message);
+                    }
+                    
+                    // 3. Wenn Ausschluss angekündigt wird, autoExit setzen
+                    if (announceExclusion) {
+                      db.run(
+                        "UPDATE members SET autoExit = ? WHERE id = ?",
+                        [exclusionDate, memberId],
+                        function(err) {
+                          if (err) {
+                            db.run("ROLLBACK");
+                            return res.status(500).send(err.message);
+                          }
+                          
+                          // 4. Historieneinträge erstellen
+                          createDunningHistoryEntry();
+                        }
+                      );
+                    } else {
+                      createDunningHistoryEntry();
+                    }
+                  });
+                }
+              }
+            );
+          });
+          
+          function createDunningHistoryEntry() {
+            // EXAKT den gleichen Mailinhalt verwenden, der auch versendet wurde
+            const historyText = `Zahlungserinnerung ${announceExclusion ? 'mit Ausschluss-Ankündigung ' : ''}per E-Mail versendet an: ${recipient}
+
+=== E-MAIL-INHALT ===
+${mailContent ? mailContent.replace(/<[^>]*>/g, '') : 'Mailinhalt nicht verfügbar'}
+
+=== ZUSÄTZLICHE INFORMATIONEN ===
+- Anzahl erinnerte Beiträge: ${paymentsCount || payments.length}
+- Gesamtbetrag: ${totalAmount} €
+${announceExclusion ? `- Automatisches Austrittsdatum gesetzt: 30.08.${currentYear}` : ''}
+- Erinnerungsdatum: ${currentDate}`;
+            
+            db.run(
+              `INSERT INTO member_notes (member_id, note_text, note_type, created_by)
+               VALUES (?, ?, ?, ?)`,
+              [memberId, historyText, 'korrespondenz', createdBy],
+              function(err) {
+                if (err) {
+                  db.run("ROLLBACK");
+                  return res.status(500).send(err.message);
+                }
+                
+                // Transaktion erfolgreich abschließen
+                db.run("COMMIT", (err) => {
+                  if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).send(err.message);
+                  }
+                  
+                  res.json({ 
+                    success: true, 
+                    message: "Zahlungserinnerung erfolgreich erstellt",
+                    paymentsCount: paymentsCount || payments.length,
+                    exclusionDate: announceExclusion ? exclusionDate : null
+                  });
+                });
+              }
+            );
+          }
+        }
+      );
+    });
+  });
+});
+
+// Mahnung per E-Mail versenden
+router.post("/:id/send-dunning-email", (req, res) => {
+  const memberId = req.params.id;
+  const { announceExclusion } = req.body;
+  
+  // Mitgliedsdaten abrufen
+  db.get("SELECT * FROM members WHERE id = ?", [memberId], (err, member) => {
+    if (err) {
+      return res.status(500).send(err.message);
+    }
+    if (!member) {
+      return res.status(404).send("Mitglied nicht gefunden");
+    }
+    
+    if (!member.email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Mitglied hat keine E-Mail-Adresse hinterlegt" 
+      });
+    }
+    
+    // Organisationsdaten abrufen
+    db.get("SELECT * FROM organization_details LIMIT 1", [], (err, organization) => {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      
+      // Offene Beiträge abrufen
+      db.all(
+        `SELECT p.*, 
+                COALESCE(rh.reminder_count, 0) as reminder_count,
+                rh.last_reminder_date
+         FROM payments p
+         LEFT JOIN (
+           SELECT payment_id, 
+                  COUNT(*) as reminder_count,
+                  MAX(reminder_date) as last_reminder_date
+           FROM reminder_history 
+           GROUP BY payment_id
+         ) rh ON p.id = rh.payment_id
+         WHERE p.memberId = ? AND p.status = 'offen'
+         ORDER BY p.year ASC`,
+        [memberId],
+        async (err, openPayments) => {
+          if (err) {
+            return res.status(500).send(err.message);
+          }
+          
+          if (openPayments.length === 0) {
+            return res.status(400).json({ 
+              success: false, 
+              message: "Mitglied hat keine offenen Beiträge" 
+            });
+          }
+          
+          const currentYear = new Date().getFullYear();
+          const totalAmount = openPayments.reduce((sum, payment) => sum + payment.amount, 0);
+          
+          // Mail-Template generieren
+          const mailContent = generateDunningMailTemplate(member, organization, openPayments, totalAmount, currentYear, announceExclusion);
+          const subject = announceExclusion 
+            ? `Zahlungserinnerung - Offene Mitgliedsbeiträge und wichtiger Hinweis`
+            : `Zahlungserinnerung - Offene Mitgliedsbeiträge`;
+          
+          try {
+            // E-Mail über bestehende E-Mail-Funktionalität versenden
+            const emailModule = require('./email');
+            await emailModule.sendDunningEmail(member, organization, subject, mailContent);
+            
+            res.json({
+              success: true,
+              message: "Zahlungserinnerung erfolgreich per E-Mail versendet",
+              recipient: member.email,
+              paymentsCount: openPayments.length,
+              totalAmount: totalAmount,
+              mailContent: mailContent
+            });
+            
+          } catch (emailError) {
+            console.error("Fehler beim E-Mail-Versand:", emailError);
+            res.status(500).json({
+              success: false,
+              message: "E-Mail-Versand fehlgeschlagen: " + emailError.message
+            });
+          }
+        }
+      );
+    });
+  });
+});
+
+function generateDunningMailTemplate(member, organization, openPayments, totalAmount, currentYear, announceExclusion) {
+  const paymentsList = openPayments.map(payment => {
+    const reminderInfo = payment.reminder_count > 0 
+      ? ` (bereits ${payment.reminder_count}x erinnert, zuletzt am ${payment.last_reminder_date})`
+      : '';
+    return `  - ${payment.year}: ${payment.amount} €${reminderInfo}`;
+  }).join('\n');
+  
+  const exclusionText = announceExclusion ? `
+<p><strong>⚠️ WICHTIGER HINWEIS - Ausschluss-Ankündigung:</strong></p>
+<p>Falls bis zum <strong>30. August ${currentYear}</strong> kein Zahlungseingang zu verzeichnen ist, werden wir gemäß unserer Satzung und dem Beschluss der Mitgliederversammlung vom 16.06.2025 Ihren <strong>Ausschluss aus dem Verein</strong> aussprechen müssen.</p>
+
+<p>Ein <strong>Wiedereintritt ist jederzeit möglich</strong>.</p>
+
+<p>Wir bedauern diesen Schritt sehr und hoffen auf Ihr Verständnis sowie eine schnelle Klärung der Angelegenheit.</p>` : '';
+  
+  return `<p>Liebe Familie ${member.lastName},</p>
+
+<p>herzlichen Dank für Ihre Unterstützung unserer Schule! Als Mitglied des ${organization?.name || 'Schulfördervereins'} helfen Sie dabei, wichtige Projekte für unsere Kinder zu ermöglichen.</p>
+
+<p>Bei der Durchsicht unserer Unterlagen ist uns aufgefallen, dass noch <strong>folgende Mitgliedsbeiträge im Gesamtwert von nur ${totalAmount} Euro offen</strong> sind:</p>
+
+<p><strong>Offene Beiträge:</strong></p>
+<pre>${paymentsList}</pre>
+
+<p>Um Ihnen die Zahlung so einfach wie möglich zu machen, haben wir folgende Optionen für Sie vorbereitet:</p>
+
+<ol>
+  <li><strong>Überweisung:</strong> Bitte überweisen Sie den <strong>Gesamtbetrag von ${totalAmount} Euro</strong> ${announceExclusion ? 'bis zum 30. August' : 'in den nächsten Tagen'} auf folgendes Konto:<br>
+  Kontoinhaber: ${organization?.name || 'Schulförderverein'}<br>
+  IBAN: ${organization?.iban || '[IBAN eintragen]'}<br>
+  BIC: ${organization?.bic || '[BIC eintragen]'}<br>
+  Verwendungszweck: Mitgliedsbeitrag ${member.childName || member.lastName} - Nachzahlung</li>
+
+  <li><strong>Dauerauftrag:</strong> Richten Sie einen Dauerauftrag ein, um den Beitrag jährlich automatisch zu überweisen. So müssen Sie sich keine Gedanken mehr über die Zahlung machen.</li>
+
+  <li><strong>Barzahlung:</strong> Sie können den Betrag auch bar im Sekretariat der Schule entrichten. Bitte geben Sie den Betrag in einem Umschlag mit Ihrem Namen und dem Verwendungszweck "Mitgliedsbeitrag - Nachzahlung" ab.</li>
+</ol>
+${exclusionText}
+
+<p>Falls Sie bereits überwiesen haben, betrachten Sie diese Nachricht als gegenstandslos. Wir danken Ihnen herzlich für Ihre Unterstützung und Ihr Engagement. Bei Fragen oder Anliegen stehen wir Ihnen gerne zur Verfügung.</p>
+
+<p>Mit freundlichen Grüßen,</p>
+
+<p>${organization?.name_kassenwart || '[Kassenwart]'}<br>
+Kassenwart<br>
+${organization?.name || 'Schulförderverein'}<br>
+${organization?.address || '[Adresse]'}</p>`;
+}
+
 module.exports = {router, convertExcelDate};

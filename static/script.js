@@ -170,6 +170,7 @@ function loadMembers() {
                     <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})" title="Zahlungen vom Mitglied verwalten">💶</button>
                     ${ member.actualExit?"🏁":`
                         <button class="btn btn-warning btn-sm" onclick="recordMemberExit(${member.id})" title="Austritt erfassen">🚪</button>
+                        ${ member.total_open_amount > 0 ? `<button class="btn btn-danger btn-sm" onclick="dunMember(${member.id})" title="Zahlungserinnerung per E-Mail senden">📮</button>` : '' }
                         ` }
                 </div>
               </td>
@@ -225,6 +226,7 @@ function loadMembers() {
                                 <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})" title="Zahlungen vom Mitglied verwalten">💶</button>
                                 ${ member.actualExit?"🏁":`
                                     <button class="btn btn-warning btn-sm" onclick="recordMemberExit(${member.id})" title="Austritt erfassen">🚪</button>
+                                    ${ member.total_open_amount > 0 ? `<button class="btn btn-danger btn-sm" onclick="dunMember(${member.id})" title="Zahlungserinnerung per E-Mail senden">📮</button>` : '' }
                                     ` }
                             </div>
                           </td>
@@ -814,6 +816,103 @@ function addManualReminder(paymentId, reminderMethod, reminderDate, reminderNote
             alert(error.message);
         });
 }
+
+// ===== MITGLIEDER-ZAHLUNGSERINNERUNG =====
+
+// Zahlungserinnerung für Mitglied erstellen
+async function dunMember(memberId) {
+  try {
+    // Zuerst prüfen, ob das Mitglied offene Beiträge hat
+    const member = window.members.find(m => m.id === memberId);
+    if (!member || member.total_open_amount <= 0) {
+      alert("Dieses Mitglied hat keine offenen Beiträge.");
+      return;
+    }
+    
+    if (!member.email) {
+      alert("Dieses Mitglied hat keine E-Mail-Adresse hinterlegt. Zahlungserinnerung kann nicht versendet werden.");
+      return;
+    }
+    
+    // Bestätigung für Ausschluss-Ankündigung abfragen
+    const announceExclusion = confirm(
+      `Ausschluss aus dem Verein ankündigen?\n\n` +
+      `Bei "Ja" wird das automatische Austrittsdatum auf den 30.08.${new Date().getFullYear()} gesetzt ` +
+      `und eine entsprechende Zahlungserinnerung mit Ausschluss-Ankündigung per E-Mail versendet.\n\n` +
+      `Bei "Nein" wird nur eine freundliche Zahlungserinnerung per E-Mail versendet.`
+    );
+    
+    // E-Mail über Server versenden
+    try {
+      const response = await fetch(`/members/${memberId}/send-dunning-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ announceExclusion })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(
+          `Mahnung erfolgreich per E-Mail versendet!\n\n` +
+          `Empfänger: ${result.recipient}\n` +
+          `Offene Beiträge: ${result.paymentsCount}\n` +
+          `Gesamtbetrag: ${result.totalAmount} €`
+        );
+        
+        // Fragen, ob Zahlungserinnerung auch in der Datenbank hinterlegt werden soll
+        const recordDunning = confirm(
+          "Soll die Zahlungserinnerung zusätzlich bei allen offenen Beiträgen in der Datenbank hinterlegt werden?"
+        );
+        
+        if (recordDunning) {
+          try {
+            const recordResponse = await fetch(`/members/${memberId}/dunning`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                announceExclusion,
+                mailContent: result.mailContent,
+                recipient: result.recipient,
+                totalAmount: result.totalAmount,
+                paymentsCount: result.paymentsCount
+              })
+            });
+            
+            if (recordResponse.ok) {
+              const recordResult = await recordResponse.json();
+              alert(
+                `Zahlungserinnerung erfolgreich in der Datenbank hinterlegt!\n\n` +
+                `${recordResult.paymentsCount} Beiträge wurden erinnert.\n` +
+                (announceExclusion ? `Automatisches Austrittsdatum gesetzt auf: ${recordResult.exclusionDate}` : "")
+              );
+              
+              // Mitgliederliste neu laden
+              loadMembers();
+            } else {
+              throw new Error("Fehler beim Hinterlegen der Zahlungserinnerung in der Datenbank");
+            }
+          } catch (error) {
+            console.error("Fehler beim Hinterlegen der Zahlungserinnerung:", error);
+            alert("E-Mail wurde versendet, aber Fehler beim Hinterlegen in der Datenbank: " + error.message);
+          }
+        }
+      } else {
+        alert("Fehler beim E-Mail-Versand: " + result.message);
+      }
+      
+    } catch (error) {
+      console.error("Fehler beim E-Mail-Versand:", error);
+      alert("Fehler beim E-Mail-Versand: " + error.message);
+    }
+    
+  } catch (error) {
+    console.error("Fehler bei der Mahnung:", error);
+    alert("Fehler bei der Mahnung: " + error.message);
+  }
+}
+
+// ...existing code...
 
 // Filter-Hilfsfunktionen
 function getFiltersFromUI() {
