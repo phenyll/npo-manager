@@ -41,6 +41,16 @@ app.use(session({
     }
 }));
 
+// Root-Route - Weiterleitung zur Login-Seite
+app.get('/', (req, res) => {
+    // Wenn der Benutzer bereits eingeloggt ist, zur Hauptseite weiterleiten
+    if (req.session.user) {
+        res.redirect('/main');
+    } else {
+        res.redirect('/login');
+    }
+});
+
 // Login-Seite
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, '../public', 'login.html'));
