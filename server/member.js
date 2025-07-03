@@ -740,7 +740,7 @@ router.get("/:id/documents", (req, res) => {
   );
 });
 
-// Einzelnes Dokument herunterladen
+// Einzelnes Dokument anzeigen/öffnen
 router.get("/:id/documents/:docId/download", (req, res) => {
   const { id: memberId, docId } = req.params;
   
@@ -763,7 +763,39 @@ router.get("/:id/documents/:docId/download", (req, res) => {
         return res.status(404).send("Datei nicht gefunden");
       }
       
+      // Header für Download setzen
       res.setHeader('Content-Disposition', `attachment; filename="${row.original_filename}"`);
+      res.setHeader('Content-Type', row.file_type);
+      res.sendFile(filePath);
+    }
+  );
+});
+
+// Dokument im Browser anzeigen
+router.get("/:id/documents/:docId/view", (req, res) => {
+  const { id: memberId, docId } = req.params;
+  
+  db.get(
+    `SELECT filename, original_filename, file_type 
+     FROM member_documents 
+     WHERE id = ? AND member_id = ?`,
+    [docId, memberId],
+    (err, row) => {
+      if (err) {
+        return res.status(500).send(err.message);
+      }
+      if (!row) {
+        return res.status(404).send("Dokument nicht gefunden");
+      }
+      
+      const filePath = path.join(__dirname, '../uploads/members', row.filename);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).send("Datei nicht gefunden");
+      }
+      
+      // Header für Inline-Anzeige im Browser setzen
+      res.setHeader('Content-Disposition', `inline; filename="${row.original_filename}"`);
       res.setHeader('Content-Type', row.file_type);
       res.sendFile(filePath);
     }

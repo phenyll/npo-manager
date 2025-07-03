@@ -47,7 +47,7 @@
 ### API-Endpunkte
 - `POST /members/:id/documents` - Dokument hochladen
 - `GET /members/:id/documents` - Dokumente abrufen
-- `GET /members/:id/documents/:docId/download` - Dokument herunterladen
+- `GET /members/:id/documents/:docId/download` - Dokument anzeigen/öffnen
 - `DELETE /members/:id/documents/:docId` - Dokument löschen
 - `POST /members/:id/notes` - Notiz erstellen
 - `GET /members/:id/notes` - Notizen abrufen

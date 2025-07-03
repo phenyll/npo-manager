@@ -1069,6 +1069,9 @@ function loadMemberDocuments(memberId) {
                             </small>
                         </div>
                         <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-info" onclick="viewDocument(${memberId}, ${doc.id}, '${doc.original_filename}')">
+                                👁️ Ansehen
+                            </button>
                             <button class="btn btn-sm btn-outline-primary" onclick="downloadDocument(${memberId}, ${doc.id})">
                                 📥 Download
                             </button>
@@ -1124,6 +1127,11 @@ document.getElementById('documentUploadForm').addEventListener('submit', functio
         alert('Fehler beim Hochladen des Dokuments: ' + error.message);
     });
 });
+
+// Dokument im Browser anzeigen
+function viewDocument(memberId, docId, filename) {
+    window.open(`/members/${memberId}/documents/${docId}/view`, '_blank');
+}
 
 // Dokument herunterladen
 function downloadDocument(memberId, docId) {
