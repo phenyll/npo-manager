@@ -931,6 +931,61 @@ router.delete("/:id/notes/:noteId", (req, res) => {
   );
 });
 
+// ===== BEITRAGSVERWALTUNG =====
+
+// Alle Beiträge eines Mitglieds abrufen (für Detailseite)
+router.get("/:id/payments", (req, res) => {
+  const memberId = req.params.id;
+  
+  db.all(
+    `SELECT p.*,
+            COALESCE(rh.reminder_count, 0) as reminder_count,
+            rh.last_reminder_date,
+            CASE 
+              WHEN p.status = 'gezahlt' THEN 'Gezahlt'
+              WHEN p.status = 'offen' THEN 'Offen'
+              ELSE p.status
+            END as status_text
+     FROM payments p
+     LEFT JOIN (
+       SELECT payment_id, 
+              COUNT(*) as reminder_count,
+              MAX(reminder_date) as last_reminder_date
+       FROM reminder_history 
+       GROUP BY payment_id
+     ) rh ON p.id = rh.payment_id
+     WHERE p.memberId = ?
+     ORDER BY p.year DESC, p.status ASC`,
+    [memberId],
+    (err, rows) => {
+      if (err) {
+        console.error("Fehler beim Abrufen der Mitgliedsbeiträge:", err.message);
+        return res.status(500).send(err.message);
+      }
+      
+      // Statistiken berechnen
+      const totalPayments = rows.length;
+      const paidPayments = rows.filter(p => p.status === 'gezahlt').length;
+      const openPayments = rows.filter(p => p.status === 'offen').length;
+      const totalOpenAmount = rows.filter(p => p.status === 'offen')
+                                   .reduce((sum, p) => sum + p.amount, 0);
+      const totalPaidAmount = rows.filter(p => p.status === 'gezahlt')
+                                   .reduce((sum, p) => sum + p.amount, 0);
+      
+      res.json({
+        payments: rows,
+        statistics: {
+          totalPayments,
+          paidPayments,
+          openPayments,
+          totalOpenAmount,
+          totalPaidAmount
+        }
+      });
+    }
+  );
+});
+
 // ===== MAHNUNG FÜR MITGLIEDER =====
 
 // Alle offenen Beiträge eines Mitglieds abrufen für Mahnung

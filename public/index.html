@@ -384,6 +384,70 @@
           </div>
         </div>
       </div>
+
+      <!-- Beitragsverwaltung -->
+      <div class="mt-4">
+        <h4>💰 Mitgliedsbeiträge</h4>
+        <div class="card">
+          <div class="card-body">
+            <!-- Beitragsstatistiken -->
+            <div class="row mb-3">
+              <div class="col-md-3">
+                <div class="card bg-light">
+                  <div class="card-body text-center">
+                    <h6 class="text-muted">Gesamt Beiträge</h6>
+                    <h4 id="paymentStatsTotal">-</h4>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-success text-white">
+                  <div class="card-body text-center">
+                    <h6>Gezahlt</h6>
+                    <h4 id="paymentStatsPaid">-</h4>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                  <div class="card-body text-center">
+                    <h6>Offen</h6>
+                    <h4 id="paymentStatsOpen">-</h4>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                  <div class="card-body text-center">
+                    <h6>Offener Betrag</h6>
+                    <h4 id="paymentStatsOpenAmount">-</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Beiträge-Tabelle -->
+            <div class="table-responsive">
+              <table class="table table-sm table-striped">
+                <thead>
+                  <tr>
+                    <th>Jahr</th>
+                    <th>Betrag</th>
+                    <th>Status</th>
+                    <th>Zahlungsdatum</th>
+                    <th>Erinnerungen</th>
+                  </tr>
+                </thead>
+                <tbody id="memberPaymentsList">
+                  <tr>
+                    <td colspan="5" class="text-center text-muted">Lade Beiträge...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
   

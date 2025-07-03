@@ -695,9 +695,10 @@ function viewMemberDetails(id) {
         // Speichern der ID für spätere Updates
         document.getElementById("memberForm").dataset.memberId = id;
         
-        // Dokumente und Notizen laden
+        // Dokumente, Notizen und Beiträge laden
         loadMemberDocuments(id);
         loadMemberNotes(id);
+        loadMemberPayments(id);
       });
   }
 
@@ -912,7 +913,51 @@ async function dunMember(memberId) {
   }
 }
 
-// ...existing code...
+// Beiträge für ein Mitglied laden (für Detailseite)
+function loadMemberPayments(memberId) {
+    fetch(`/members/${memberId}/payments`)
+        .then(response => response.json())
+        .then(data => {
+            const paymentsList = document.getElementById('memberPaymentsList');
+            const { payments, statistics } = data;
+            
+            // Statistiken aktualisieren
+            document.getElementById('paymentStatsTotal').textContent = statistics.totalPayments;
+            document.getElementById('paymentStatsPaid').textContent = statistics.paidPayments;
+            document.getElementById('paymentStatsOpen').textContent = statistics.openPayments;
+            document.getElementById('paymentStatsOpenAmount').textContent = `${statistics.totalOpenAmount.toFixed(2)} €`;
+            
+            if (payments.length === 0) {
+                paymentsList.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Keine Beiträge vorhanden</td></tr>';
+                return;
+            }
+            
+            paymentsList.innerHTML = payments.map(payment => {
+                const statusBadge = payment.status === 'gezahlt' 
+                    ? '<span class="badge bg-success">Gezahlt</span>' 
+                    : '<span class="badge bg-danger">Offen</span>';
+                
+                const reminderInfo = payment.reminder_count > 0 
+                    ? `${payment.reminder_count}x erinnert<br><small class="text-muted">Letzte: ${formatDate(payment.last_reminder_date)}</small>`
+                    : '<span class="text-muted">-</span>';
+                
+                return `
+                    <tr class="${payment.status === 'offen' ? 'table-warning' : ''}">
+                        <td><strong>${payment.year}</strong></td>
+                        <td>${payment.amount.toFixed(2)} €</td>
+                        <td>${statusBadge}</td>
+                        <td>${payment.paymentDate ? formatDate(payment.paymentDate) : '<span class="text-muted">-</span>'}</td>
+                        <td>${reminderInfo}</td>
+                    </tr>
+                `;
+            }).join('');
+        })
+        .catch(error => {
+            console.error('Fehler beim Laden der Beiträge:', error);
+            document.getElementById('memberPaymentsList').innerHTML = 
+                '<tr><td colspan="5" class="text-center text-danger">Fehler beim Laden der Beiträge</td></tr>';
+        });
+}
 
 // Filter-Hilfsfunktionen
 function getFiltersFromUI() {
