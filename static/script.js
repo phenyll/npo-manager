@@ -835,16 +835,35 @@ async function dunMember(memberId) {
       return;
     }
     
-    // Bestätigung für Ausschluss-Ankündigung abfragen
-    const announceExclusion = confirm(
-      `Ausschluss aus dem Verein ankündigen?\n\n` +
-      `Bei "Ja" wird das automatische Austrittsdatum auf den 30.08.${new Date().getFullYear()} gesetzt ` +
-      `und eine entsprechende Zahlungserinnerung mit Ausschluss-Ankündigung per E-Mail versendet.\n\n` +
-      `Bei "Nein" wird nur eine freundliche Zahlungserinnerung per E-Mail versendet.`
+    // SICHERHEITSFRAGE 1: Bestätigung, dass wirklich gemahnt werden soll
+    const reallyWarnMember = confirm(
+      `Zahlungserinnerung für ${member.firstName} ${member.lastName} senden?\n\n` +
+      `Offene Beiträge: ${member.open_payments_count || 0}\n` +
+      `Gesamtbetrag: ${member.total_open_amount?.toFixed(2) || '0.00'} €\n` +
+      `E-Mail-Adresse: ${member.email}\n\n` +
+      `Möchten Sie wirklich eine Zahlungserinnerung versenden?`
     );
     
-    // E-Mail über Server versenden
+    if (!reallyWarnMember) {
+      // Abbruch durch Benutzer
+      return;
+    }
+    
+    // SICHERHEITSFRAGE 2: Mit Ausschluss-Ankündigung?
+    const announceExclusion = confirm(
+      `Ausschluss aus dem Verein ankündigen?\n\n` +
+      `JA: Mit Ausschluss-Ankündigung\n` +
+      `- Automatisches Austrittsdatum wird auf 30.08.${new Date().getFullYear()} gesetzt\n` +
+      `- Zahlungserinnerung enthält Hinweis auf möglichen Vereinsausschluss\n` +
+      `- E-Mail wird sofort versendet und in Datenbank protokolliert\n\n` +
+      `NEIN: Normale Zahlungserinnerung\n` +
+      `- Freundliche Zahlungserinnerung ohne Ausschluss-Androhung\n` +
+      `- E-Mail wird sofort versendet und in Datenbank protokolliert`
+    );
+    
+    // Beide Optionen führen zu sofortiger Ausführung ohne weitere Rückfragen
     try {
+      // E-Mail über Server versenden
       const response = await fetch(`/members/${memberId}/send-dunning-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -854,62 +873,54 @@ async function dunMember(memberId) {
       const result = await response.json();
       
       if (result.success) {
-        alert(
-          `Mahnung erfolgreich per E-Mail versendet!\n\n` +
-          `Empfänger: ${result.recipient}\n` +
-          `Offene Beiträge: ${result.paymentsCount}\n` +
-          `Gesamtbetrag: ${result.totalAmount} €`
-        );
-        
-        // Fragen, ob Zahlungserinnerung auch in der Datenbank hinterlegt werden soll
-        const recordDunning = confirm(
-          "Soll die Zahlungserinnerung zusätzlich bei allen offenen Beiträgen in der Datenbank hinterlegt werden?"
-        );
-        
-        if (recordDunning) {
-          try {
-            const recordResponse = await fetch(`/members/${memberId}/dunning`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ 
-                announceExclusion,
-                mailContent: result.mailContent,
-                recipient: result.recipient,
-                totalAmount: result.totalAmount,
-                paymentsCount: result.paymentsCount
-              })
-            });
+        // Mahnung automatisch in Datenbank hinterlegen (ohne weitere Rückfrage)
+        try {
+          const recordResponse = await fetch(`/members/${memberId}/dunning`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              announceExclusion,
+              mailContent: result.mailContent,
+              recipient: result.recipient,
+              totalAmount: result.totalAmount,
+              paymentsCount: result.paymentsCount
+            })
+          });
+          
+          if (recordResponse.ok) {
+            const recordResult = await recordResponse.json();
             
-            if (recordResponse.ok) {
-              const recordResult = await recordResponse.json();
-              alert(
-                `Zahlungserinnerung erfolgreich in der Datenbank hinterlegt!\n\n` +
-                `${recordResult.paymentsCount} Beiträge wurden erinnert.\n` +
-                (announceExclusion ? `Automatisches Austrittsdatum gesetzt auf: ${recordResult.exclusionDate}` : "")
-              );
-              
-              // Mitgliederliste neu laden
-              loadMembers();
-            } else {
-              throw new Error("Fehler beim Hinterlegen der Zahlungserinnerung in der Datenbank");
-            }
-          } catch (error) {
-            console.error("Fehler beim Hinterlegen der Zahlungserinnerung:", error);
-            alert("E-Mail wurde versendet, aber Fehler beim Hinterlegen in der Datenbank: " + error.message);
+            // ERFOLGREICHE BESTÄTIGUNG (nur diese eine Meldung)
+            alert(
+              `✅ Zahlungserinnerung erfolgreich versendet und protokolliert!\n\n` +
+              `📧 E-Mail an: ${result.recipient}\n` +
+              `📊 Erinnerte Beiträge: ${result.paymentsCount}\n` +
+              `💰 Gesamtbetrag: ${result.totalAmount} €\n` +
+              `📝 Protokolliert: ${recordResult.paymentsCount} Beiträge\n` +
+              (announceExclusion ? `⚠️ Automatisches Austrittsdatum gesetzt: ${recordResult.exclusionDate}` : `ℹ️ Normale Zahlungserinnerung`)
+            );
+            
+            // Mitgliederliste neu laden
+            loadMembers();
+          } else {
+            throw new Error("Fehler beim Hinterlegen der Zahlungserinnerung in der Datenbank");
           }
+        } catch (error) {
+          console.error("Fehler beim Hinterlegen der Zahlungserinnerung:", error);
+          alert(`⚠️ E-Mail wurde versendet, aber Fehler beim Protokollieren:\n${error.message}`);
         }
       } else {
-        alert("Fehler beim E-Mail-Versand: " + result.message);
+        alert(`❌ Fehler beim E-Mail-Versand:\n${result.message}`);
       }
       
     } catch (error) {
       console.error("Fehler beim E-Mail-Versand:", error);
-      alert("Fehler beim E-Mail-Versand: " + error.message);
+      alert(`❌ Fehler beim E-Mail-Versand:\n${error.message}`);
     }
     
   } catch (error) {
     console.error("Fehler bei der Mahnung:", error);
-    alert("Fehler bei der Mahnung: " + error.message);
+    alert(`❌ Fehler bei der Mahnung:\n${error.message}`);
   }
 }
 
