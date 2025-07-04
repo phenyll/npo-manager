@@ -166,7 +166,7 @@ function loadMembers() {
               <td>${member.has_email ? 'Ja' : 'Nein'}</td>
               <td>
                 <div style="white-space: nowrap">
-                    <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})" title="Mitgliedsdaten bearbeiten">📝</button>
+                    <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id}, event)" title="Mitgliedsdaten bearbeiten (Shift+Klick für neuen Tab)">📝</button>
                     <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})" title="Zahlungen vom Mitglied verwalten">💶</button>
                     ${ member.actualExit?"🏁":`
                         <button class="btn btn-warning btn-sm" onclick="recordMemberExit(${member.id})" title="Austritt erfassen">🚪</button>
@@ -222,7 +222,7 @@ function loadMembers() {
                           <td>${member.email ? 'Ja' : 'Nein'}</td>
                           <td>
                             <div style="white-space: nowrap">
-                                <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id})" title="Mitgliedsdaten bearbeiten">📝</button>
+                                <button class="btn btn-info btn-sm" onclick="viewMemberDetails(${member.id}, event)" title="Mitgliedsdaten bearbeiten (Shift+Klick für neuen Tab)">📝</button>
                                 <button class="btn btn-secondary btn-sm" onclick="viewMemberPayments(${member.id})" title="Zahlungen vom Mitglied verwalten">💶</button>
                                 ${ member.actualExit?"🏁":`
                                     <button class="btn btn-warning btn-sm" onclick="recordMemberExit(${member.id})" title="Austritt erfassen">🚪</button>
@@ -470,6 +470,12 @@ document.getElementById("memberForm").addEventListener("submit", (e) => {
         if (response.ok) {
           alert("Mitglied erfolgreich aktualisiert!");
           loadMembers(); // Mitgliederliste neu laden
+          
+          // URL-Parameter entfernen und zur Listansicht zurückkehren
+          const currentUrl = new URL(window.location);
+          currentUrl.searchParams.delete('member');
+          window.history.pushState({}, '', currentUrl.toString());
+          
           document.getElementById("memberDetails").classList.add("d-none");
           document.getElementById("members").classList.remove("d-none");
         } else {
@@ -480,6 +486,11 @@ document.getElementById("memberForm").addEventListener("submit", (e) => {
   });  
 
   document.getElementById("cancelEdit").addEventListener("click", () => {
+    // URL-Parameter entfernen und zur Listansicht zurückkehren
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.delete('member');
+    window.history.pushState({}, '', currentUrl.toString());
+    
     document.getElementById("memberDetails").classList.add("d-none");
     document.getElementById("members").classList.remove("d-none");
   });  
@@ -671,7 +682,26 @@ document.getElementById("importForm").addEventListener("submit", async (e) => {
   }
 });
 
-function viewMemberDetails(id) {
+function viewMemberDetails(id, event) {
+    // Prüfen, ob Shift-Taste gedrückt wurde
+    if (event && event.shiftKey) {
+        // Neuen Tab mit Deeplink öffnen
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('member', id);
+        window.open(currentUrl.toString(), '_blank');
+        return;
+    }
+    
+    // Normale Detailansicht im gleichen Tab
+    showMemberDetailsView(id);
+}
+
+function showMemberDetailsView(id) {
+    // URL mit Mitglieder-ID aktualisieren (ohne Seitenreload)
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('member', id);
+    window.history.pushState({ memberId: id }, '', currentUrl.toString());
+    
     fetch(`/members/${id}`)
       .then((response) => response.json())
       .then((data) => {
@@ -700,7 +730,7 @@ function viewMemberDetails(id) {
         loadMemberNotes(id);
         loadMemberPayments(id);
       });
-  }
+}
 
   function formatDate(dateString) {
     if (!dateString) return null;
@@ -1069,9 +1099,36 @@ function setupFilterEventListeners() {
     }
 }
 
+// Prüfen, ob eine Mitglieder-ID in der URL steht und entsprechende Detailansicht laden
+function checkForMemberIdInUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const memberId = urlParams.get('member');
+    
+    if (memberId) {
+        // Mitgliederdaten laden und Detailansicht anzeigen
+        showMemberDetailsView(memberId);
+    }
+}
+
+// Browser-Zurück/Vorwärts-Navigation handhaben
+window.addEventListener('popstate', function(event) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const memberId = urlParams.get('member');
+    
+    if (memberId) {
+        // Detailansicht für die ID aus der URL laden
+        showMemberDetailsView(memberId);
+    } else {
+        // Zur Listansicht zurückkehren
+        document.getElementById("memberDetails").classList.add("d-none");
+        document.getElementById("members").classList.remove("d-none");
+    }
+});
+
 // Beim DOM-Load die Event-Listener einrichten
 document.addEventListener('DOMContentLoaded', function() {
     setupFilterEventListeners();
+    checkForMemberIdInUrl(); // Prüfung auf Mitglieder-ID in URL
 });
 
 // Initiales Laden der Daten
