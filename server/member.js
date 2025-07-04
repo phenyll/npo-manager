@@ -1257,12 +1257,12 @@ function generateDunningMailTemplate(member, organization, openPayments, totalAm
   }).join('\n');
   
   const exclusionText = announceExclusion ? `
-<p><strong>⚠️ WICHTIGER HINWEIS - Ausschluss-Ankündigung:</strong></p>
-<p>Falls bis zum <strong>30. August ${currentYear}</strong> kein Zahlungseingang zu verzeichnen ist, werden wir gemäß unserer Satzung und dem Beschluss der Mitgliederversammlung vom 16.06.2025 Ihren <strong>Ausschluss aus dem Verein</strong> aussprechen müssen.</p>
+<p><strong>⚠️ WICHTIGER HINWEIS - Mitgliedschaft wird beendet:</strong></p>
+<p>Falls bis zum <strong>30. August ${currentYear}</strong> kein Zahlungseingang zu verzeichnen ist, werden wir gemäß unserer Satzung und dem Beschluss der Mitgliederversammlung vom 16.06.2025 Ihre <strong>Mitgliedschaft im Verein leider beenden</strong> müssen.</p>
 
 <p>Ein <strong>Wiedereintritt ist jederzeit möglich</strong>.</p>
 
-<p>Wir bedauern diesen Schritt sehr und hoffen auf Ihr Verständnis sowie eine schnelle Klärung der Angelegenheit.</p>` : '';
+<p>Wir würden diesen Schritt sehr bedauern und hoffen auf Ihr Verständnis sowie eine schnelle Klärung der Angelegenheit.</p>` : '';
   
   return `<p>Liebe Familie ${member.lastName},</p>
 
