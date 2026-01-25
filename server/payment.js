@@ -74,11 +74,15 @@ router.post("/create-bulk", (req, res) => {
 
     // First get all eligible members
     db.all(
-        `SELECT id FROM members 
-         WHERE (actualExit IS NULL OR actualExit >= ?)
-         AND (autoExit IS NULL OR autoExit >= ?)
-         AND (joinDate IS NULL OR joinDate <= ?)`,
-        [currentYearStart, currentYearStart, currentYearEnd],
+        `SELECT id FROM members
+         WHERE (joinDate IS NULL OR joinDate = '' OR joinDate <= ?)
+         AND (
+           -- Wenn actualExit gesetzt: nur actualExit prüfen (überstimmt alles)
+           (actualExit NOT NULL AND actualExit != '' AND actualExit >= ?)
+           -- ODER wenn actualExit nicht gesetzt: autoExit/aktiv prüfen
+           OR ((actualExit IS NULL OR actualExit = '') AND (autoExit IS NULL OR autoExit = '' OR autoExit >= ?))
+         )`,
+        [currentYearEnd, currentYearStart, currentYearStart],
         (err, allEligibleMembers) => {
             if (err) {
                 return res.status(500).send(err.message);
